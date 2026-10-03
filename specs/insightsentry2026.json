@@ -1,0 +1,5254 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "InsightSentry API",
+    "version": "3.0.24",
+    "description": "Comprehensive financial data API providing access to global equities, indices, futures, options, cryptocurrencies, and forex markets with current and historical data.",
+    "contact": {
+      "name": "InsightSentry Support",
+      "email": "support@insightsentry.com",
+      "url": "https://insightsentry.com/"
+    },
+    "license": {
+      "name": "Terms of Service",
+      "url": "https://insightsentry.com/terms"
+    }
+  },
+  "servers": [
+    {
+      "url": "https://api.insightsentry.com",
+      "description": "InsightSentry API"
+    }
+  ],
+  "paths": {
+    "/v3/sip/corporate-actions": {
+      "get": {
+        "summary": "Corporate actions for a month",
+        "description": "Return US corporate actions for a processing month, optionally filtered by SIP symbol.",
+        "parameters": [
+          {"$ref": "#/components/parameters/CorporateActionMonthQueryParam"},
+          {"$ref": "#/components/parameters/CorporateActionCodeQueryParam"}
+        ],
+        "responses": {
+          "200": {"description": "Corporate actions", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/CorporateActionsResponse"}}}},
+          "400": {"$ref": "#/components/responses/RequestError"},
+          "401": {"$ref": "#/components/responses/SipUnauthorized"},
+          "403": {"$ref": "#/components/responses/SipAccessError"},
+          "429": {"$ref": "#/components/responses/SipTooManyRequests"},
+          "503": {"$ref": "#/components/responses/SipServiceUnavailable"}
+        }
+      }
+    },
+    "/v3/sip/symbols": {
+      "get": {
+        "summary": "List SIP symbols",
+        "description": "Return all supported SIP symbols.",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Complete SIP symbol list",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["current_page", "has_more", "symbols"],
+                  "properties": {
+                    "current_page": {
+                      "type": "integer",
+                      "enum": [1]
+                    },
+                    "has_more": {
+                      "type": "boolean",
+                      "enum": [false]
+                    },
+                    "symbols": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "name",
+                          "code",
+                          "type",
+                          "exchange",
+                          "currency_code",
+                          "country",
+                          "description"
+                        ],
+                        "properties": {
+                          "name": {
+                            "type": "string"
+                          },
+                          "code": {
+                            "type": "string",
+                            "example": "SIP:AAPL"
+                          },
+                          "type": {
+                            "type": "string"
+                          },
+                          "exchange": {
+                            "type": "string"
+                          },
+                          "currency_code": {
+                            "type": "string"
+                          },
+                          "country": {
+                            "type": "string"
+                          },
+                          "description": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/SipUnauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/SipAccessError"
+          },
+          "429": {
+            "$ref": "#/components/responses/SipTooManyRequests"
+          }
+        }
+      }
+    },
+    "/v3/sip/symbols/{code}/trades": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/SipSymbolPathParam"
+        }
+      ],
+      "get": {
+        "summary": "SIP trade history",
+        "description": "Retrieve available trades for a New York calendar date or a rolling window, in time order.",
+        "parameters": [
+          {
+            "name": "date",
+            "in": "query",
+            "required": true,
+            "description": "New York calendar date in YYYY-MM-DD format. Today and the previous six dates are supported; tomorrow's date returns today's trades until New York midnight.",
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "pattern": "^(?!0000)[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$"
+            },
+            "example": "2026-09-08"
+          },
+          {
+            "name": "window",
+            "in": "query",
+            "required": false,
+            "description": "Rolling elapsed hours for today's New York date or tomorrow's date alias; may include yesterday's trades. Omit for the whole New York day. Ignored for historical dates.",
+            "schema": {
+              "type": "string",
+              "nullable": true,
+              "default": null,
+              "enum": [null, "3h", "6h", "9h", "12h", "15h", "18h", "21h", "24h"]
+            },
+            "example": "6h"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Trade history. Empty results return HTTP 200 with error data_unavailable and a message.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SipTradesResponseData"
+                },
+                "examples": {
+                  "trades": {
+                    "value": {
+                      "code": "SIP:AAPL",
+                      "last_update": 1788874260000,
+                      "bar_type": "1T",
+                      "series": [
+                        {
+                          "time": 1788874200.208,
+                          "us": 1788874200208123,
+                          "close": 100.25,
+                          "volume": 10,
+                          "trade_id": 123456789,
+                          "trade_exchange": "NASDAQ_OMX",
+                          "tape": "C",
+                          "trade_conditions": ["@"]
+                        }
+                      ]
+                    }
+                  },
+                  "weekend": {
+                    "value": {
+                      "code": "SIP:AAPL",
+                      "last_update": 1788874260000,
+                      "bar_type": "1T",
+                      "error": "data_unavailable",
+                      "message": "No data is available for 2026-09-06: the requested date falls on a weekend.",
+                      "series": []
+                    }
+                  },
+                  "market_closed": {
+                    "value": {
+                      "code": "SIP:AAPL",
+                      "last_update": 1788874260000,
+                      "bar_type": "1T",
+                      "error": "data_unavailable",
+                      "message": "No data is available for 2026-09-07: the market was closed on the requested date.",
+                      "series": []
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/SipRequestError"
+          },
+          "401": {
+            "$ref": "#/components/responses/SipUnauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/SipAccessError"
+          },
+          "429": {
+            "$ref": "#/components/responses/SipTooManyRequests"
+          },
+          "503": {
+            "$ref": "#/components/responses/SipServiceUnavailable"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/v3/sip/symbols/{code}/series": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/SipSymbolPathParam"
+        }
+      ],
+      "get": {
+        "summary": "Recent SIP Time Series (up to 30k bars)",
+        "description": "Retrieve recent bars or trades for a SIP symbol. Tick data is unadjusted.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/BarTypeParam"
+          },
+          {
+            "$ref": "#/components/parameters/SipBarIntervalParam"
+          },
+          {
+            "$ref": "#/components/parameters/SplitAdjustmentParam"
+          },
+          {
+            "$ref": "#/components/parameters/DividendAdjustmentParam"
+          },
+          {
+            "$ref": "#/components/parameters/DataPointsParam"
+          },
+          {
+            "$ref": "#/components/parameters/AbbrParam"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful historical data response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/SipSeriesResponseData"
+                    },
+                    {
+                      "$ref": "#/components/schemas/SipCompactTimeSeriesResponseData"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/SipRequestError"
+          },
+          "401": {
+            "$ref": "#/components/responses/SipUnauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/SipAccessError"
+          },
+          "429": {
+            "$ref": "#/components/responses/SipTooManyRequests"
+          },
+          "503": {
+            "$ref": "#/components/responses/SipServiceUnavailable"
+          }
+        }
+      }
+    },
+    "/v3/sip/symbols/{code}/history": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/SipSymbolPathParam"
+        }
+      ],
+      "get": {
+        "summary": "SIP historical data for intraday periods",
+        "description": "Retrieve historical data for specific time periods with deep archive access",
+        "parameters": [
+          {
+            "name": "bar_type",
+            "in": "query",
+            "required": true,
+            "description": "(Required) Bar type.",
+            "example": "minute",
+            "schema": {
+              "type": "string",
+              "enum": ["second", "minute", "hour"]
+            }
+          },
+          {
+            "$ref": "#/components/parameters/SipBarIntervalParam"
+          },
+          {
+            "name": "start_date",
+            "in": "query",
+            "required": true,
+            "description": "Starting period in YYYY-MM format for minute/hour intervals or YYYY-MM-DD for second intervals, using New York time (America/New_York, including daylight saving time). Earliest date: 2016-01-01. Invalid calendar dates are rejected.",
+            "example": "2024-04",
+            "schema": {
+              "type": "string",
+              "oneOf": [
+                {"type": "string", "pattern": "^(?!0000)[0-9]{4}-(0[1-9]|1[0-2])$"},
+                {"type": "string", "format": "date", "pattern": "^(?!0000)[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$"}
+              ]
+            }
+          },
+          {
+            "$ref": "#/components/parameters/SplitAdjustmentParam"
+          },
+          {
+            "$ref": "#/components/parameters/DividendAdjustmentParam"
+          },
+          {
+            "$ref": "#/components/parameters/AbbrParam"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Archive history. Empty results return HTTP 200 with error data_unavailable and a message.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/SipHistoryResponseData"
+                    },
+                    {
+                      "$ref": "#/components/schemas/SipCompactTimeSeriesResponseData"
+                    }
+                  ]
+                },
+                "examples": {
+                  "before_available_history": {
+                    "value": {
+                      "code": "SIP:ABNB",
+                      "error": "data_unavailable",
+                      "message": "Requested period is before earliest available history.",
+                      "available_start_date": "2020-12-10",
+                      "bar_type": "1m",
+                      "last_update": 1788825600000,
+                      "series": []
+                    }
+                  },
+                  "weekend": {
+                    "value": {
+                      "code": "SIP:AAPL",
+                      "last_update": 1788874260000,
+                      "bar_type": "1s",
+                      "error": "data_unavailable",
+                      "message": "No data is available for 2026-09-06: the requested date falls on a weekend.",
+                      "series": []
+                    }
+                  },
+                  "market_closed": {
+                    "value": {
+                      "code": "SIP:AAPL",
+                      "last_update": 1788874260000,
+                      "bar_type": "1s",
+                      "error": "data_unavailable",
+                      "message": "No data is available for 2026-09-07: the market was closed on the requested date.",
+                      "series": []
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SipErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/SipUnauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/SipAccessError"
+          },
+          "429": {
+            "$ref": "#/components/responses/SipTooManyRequests"
+          },
+          "503": {
+            "$ref": "#/components/responses/SipServiceUnavailable"
+          }
+        }
+      }
+    },
+    "/v3/sip/symbols/quotes": {
+      "get": {
+        "summary": "Latest SIP quote data",
+        "description": "Retrieve the latest quote data for up to 10 symbols. Successful rows include the current bid and ask.",
+        "parameters": [
+          {
+            "name": "codes",
+            "in": "query",
+            "required": true,
+            "description": "Comma-separated list of SIP-prefixed symbol codes. Each code must match the SipSymbolCode pattern.",
+            "example": "SIP:AAPL,SIP:MSFT",
+            "schema": {
+              "type": "string",
+              "pattern": "^(SIP:[A-Z0-9_./!-]+)(,SIP:[A-Z0-9_./!-]+)*$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful quotes response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SipQuotesResponseData"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/SipRequestError"
+          },
+          "401": {
+            "$ref": "#/components/responses/SipUnauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/SipAccessError"
+          },
+          "429": {
+            "$ref": "#/components/responses/SipTooManyRequests"
+          },
+          "503": {
+            "$ref": "#/components/responses/SipServiceUnavailable"
+          }
+        }
+      }
+    },
+    "/v3/symbols/{symbol}/series": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/SymbolPathParam"
+        }
+      ],
+      "get": {
+        "summary": "Recent Time Series (up to 30k bars)",
+        "description": "Retrieve recent historical OHLCV data for a symbol with configurable time intervals and adjustments",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/BarTypeParam"
+          },
+          {
+            "$ref": "#/components/parameters/BarIntervalParam"
+          },
+          {
+            "$ref": "#/components/parameters/ExtendedParam"
+          },
+          {
+            "$ref": "#/components/parameters/TwentyFourHourParam"
+          },
+          {
+            "$ref": "#/components/parameters/SplitAdjustmentParam"
+          },
+          {
+            "$ref": "#/components/parameters/DividendAdjustmentParam"
+          },
+          {
+            "$ref": "#/components/parameters/BackAdjustmentParam"
+          },
+          {
+            "$ref": "#/components/parameters/DataPointsParam"
+          },
+          {
+            "$ref": "#/components/parameters/CurrencyParam"
+          },
+          {
+            "$ref": "#/components/parameters/SettlementParam"
+          },
+          {
+            "$ref": "#/components/parameters/AbbrParam"
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/HistoricalDataResponse"
+          }
+        }
+      }
+    },
+    "/v3/symbols/{symbol}/history": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/SymbolPathParam"
+        }
+      ],
+      "get": {
+        "summary": "Historical data as far as 20 years+ for intra-day historical data (second/minute/hour)",
+        "description": "Retrieve historical data for specific time periods with deep archive access",
+        "parameters": [
+          {
+            "name": "bar_type",
+            "in": "query",
+            "required": true,
+            "description": "(Required) Bar type.",
+            "example": "minute",
+            "schema": {
+              "type": "string",
+              "enum": ["second", "minute", "hour"]
+            }
+          },
+          {
+            "$ref": "#/components/parameters/BarIntervalParam"
+          },
+          {
+            "name": "start_date",
+            "in": "query",
+            "required": true,
+            "description": "Starting period in YYYY-MM format for minute/hour intervals or YYYY-MM-DD for second intervals (UTC). Invalid calendar dates are rejected.",
+            "example": "2024-04",
+            "schema": {
+              "type": "string",
+              "oneOf": [
+                {"type": "string", "pattern": "^(?!0000)[0-9]{4}-(0[1-9]|1[0-2])$"},
+                {"type": "string", "format": "date", "pattern": "^(?!0000)[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$"}
+              ]
+            }
+          },
+          {
+            "$ref": "#/components/parameters/ExtendedParam"
+          },
+          {
+            "$ref": "#/components/parameters/SplitAdjustmentParam"
+          },
+          {
+            "$ref": "#/components/parameters/DividendAdjustmentParam"
+          },
+          {
+            "$ref": "#/components/parameters/BackAdjustmentParam"
+          },
+          {
+            "$ref": "#/components/parameters/SettlementParam"
+          },
+          {
+            "$ref": "#/components/parameters/AbbrParam"
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/ArchiveHistoryResponse"
+          }
+        }
+      }
+    },
+    "/v3/symbols/{symbol}/trades": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/SymbolPathParam"
+        }
+      ],
+      "get": {
+        "summary": "Tick trades by UTC date",
+        "description": "Retrieve available trades for a symbol. Today's and tomorrow's UTC dates return a rolling snapshot, with 24 hours by default; the previous six dates return their UTC calendar days. For continuous futures, 1! uses today's front contract and 2! uses today's next contract for every requested date. The response code identifies the selected dated contract.",
+        "parameters": [
+          {
+            "name": "date",
+            "in": "query",
+            "required": true,
+            "description": "UTC date in YYYY-MM-DD format. Today and the previous six dates are supported; tomorrow's date returns the current rolling window until UTC midnight.",
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "pattern": "^(?!0000)[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$"
+            },
+            "example": "2026-09-30"
+          },
+          {
+            "name": "window",
+            "in": "query",
+            "description": "Rolling duration for today's or tomorrow's UTC date. Ignored for historical dates.",
+            "schema": {
+              "type": "string",
+              "enum": ["3h", "6h", "9h", "12h", "15h", "18h", "21h", "24h"],
+              "default": "24h"
+            },
+            "example": "6h"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Tick trade series. Dates without data return an empty series with an error message.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardTradeResponseData"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v3/symbols/{symbol}/contracts": {
+      "parameters": [
+        {
+          "name": "symbol",
+          "in": "path",
+          "required": true,
+          "description": "Symbol in Exchange:Symbol format (e.g., NASDAQ:AAPL, NYSE:TSLA). You can search for this symbol code using the /v3/symbols/search endpoint.",
+          "example": "COMEX:GC1!",
+          "schema": {
+            "$ref": "#/components/schemas/SymbolCode"
+          }
+        }
+      ],
+      "get": {
+        "summary": "List of contracts and its settlement date for futures symbols",
+        "description": "Retrieve list of relatively recent contracts along with their settlement dates for futures symbols",
+        "responses": {
+          "200": {
+            "headers": {},
+            "description": "success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "base_code": {
+                      "type": "string",
+                      "description": "Base futures code"
+                    },
+                    "contracts": {
+                      "type": "array",
+                      "description": "Array of contracts",
+                      "items": {
+                        "type": "object",
+                        "required": ["code", "settlement_date"],
+                        "properties": {
+                          "code": {
+                            "type": "string",
+                            "description": "Contract code"
+                          },
+                          "settlement_date": {
+                            "type": "string",
+                            "description": "Settlement date in YYYYMMDD format"
+                          }
+                        }
+                      }
+                    }
+                  },
+                  "required": ["base_code", "contracts"]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v3/symbols/{symbol}/info": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/SymbolPathParam"
+        }
+      ],
+      "get": {
+        "summary": "Symbol information and metadata",
+        "description": "Retrieve detailed information about a symbol including type, currency, market data, splits, option information, and more. Not intended for current price data.",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "headers": {},
+            "description": "success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["code"],
+                  "properties": {
+                    "code": {
+                      "$ref": "#/components/schemas/SymbolCode",
+                      "description": "Symbol code"
+                    },
+                    "type": {
+                      "type": "string",
+                      "description": "Instrument type"
+                    },
+                    "unit": {
+                      "type": "string",
+                      "description": "Unit identifier"
+                    },
+                    "name": {
+                      "type": "string",
+                      "description": "Symbol name or description"
+                    },
+                    "exchange": {
+                      "type": "string",
+                      "description": "Primary exchange where the symbol is traded"
+                    },
+                    "currency_code": {
+                      "type": "string",
+                      "description": "Currency code (e.g., USD, EUR)"
+                    },
+                    "base_currency": {
+                      "type": "string",
+                      "description": "Base currency code for crypto symbols"
+                    },
+                    "min_contract": {
+                      "type": "number",
+                      "description": "Minimum contract or order quantity for crypto symbols"
+                    },
+                    "volume_type": {
+                      "type": "string",
+                      "description": "Unit used for volume on crypto symbols, such as base or quote currency"
+                    },
+                    "timezone": {
+                      "type": "string",
+                      "description": "Timezone of the exchange (e.g., America/New_York)"
+                    },
+                    "country_code": {
+                      "type": "string",
+                      "description": "Country code (e.g., US, GB)"
+                    },
+                    "security_identifiers": {
+                      "type": "object",
+                      "description": "Security identifiers available for the symbol",
+                      "properties": {
+                        "isin": {
+                          "type": "string",
+                          "description": "International Securities Identification Number"
+                        },
+                        "cusip": {
+                          "type": "string",
+                          "description": "CUSIP identifier"
+                        },
+                        "figi": {
+                          "type": "object",
+                          "description": "Financial Instrument Global Identifiers",
+                          "properties": {
+                            "country_composite": {
+                              "type": "string",
+                              "description": "Country composite FIGI"
+                            },
+                            "exchange_level": {
+                              "type": "string",
+                              "description": "Exchange-level FIGI"
+                            }
+                          }
+                        },
+                        "cik": {
+                          "type": "string",
+                          "description": "SEC Central Index Key"
+                        }
+                      }
+                    },
+                    "founded": {
+                      "type": "string",
+                      "description": "Founding date of the company"
+                    },
+                    "sector": {
+                      "type": "string",
+                      "description": "Business sector"
+                    },
+                    "industry": {
+                      "type": "string",
+                      "description": "Business industry"
+                    },
+                    "underlying_symbol": {
+                      "type": "string",
+                      "description": "Underlying symbol for derivatives"
+                    },
+                    "description": {
+                      "type": "string",
+                      "description": "Description of the business if available"
+                    },
+                    "ceo": {
+                      "type": "string",
+                      "description": "CEO name"
+                    },
+                    "website": {
+                      "type": "string",
+                      "description": "Company website URL"
+                    },
+                    "status": {
+                      "type": "string",
+                      "description": "Current market status (e.g., OPEN, CLOSED, PRE, POST)",
+                      "enum": ["OPEN", "CLOSED", "PRE", "POST", "HOLIDAY"]
+                    },
+                    "delay_seconds": {
+                      "type": "integer",
+                      "description": "Data delay in seconds"
+                    },
+                    "open_time": {
+                      "type": "integer",
+                      "description": "Market open time (Unix timestamp in seconds)"
+                    },
+                    "regular_close_time": {
+                      "type": "integer",
+                      "description": "Regular market close time (Unix timestamp in seconds)"
+                    },
+                    "ipo_offer_time": {
+                      "type": "integer",
+                      "description": "IPO offer time (Unix timestamp in seconds)"
+                    },
+                    "ipo_offer_status": {
+                      "type": "string",
+                      "description": "IPO offer status"
+                    },
+                    "ipo_offer_type": {
+                      "type": "string",
+                      "description": "IPO offer type"
+                    },
+                    "available_initial_daily_bar": {
+                      "type": "integer",
+                      "description": "First available daily bar timestamp (Unix timestamp in seconds)"
+                    },
+                    "change": {
+                      "type": "number",
+                      "description": "Price change"
+                    },
+                    "change_percent": {
+                      "type": "number",
+                      "description": "Price change percentage"
+                    },
+                    "open_price": {
+                      "type": "number",
+                      "description": "Opening price"
+                    },
+                    "low_price": {
+                      "type": "number",
+                      "description": "Low price"
+                    },
+                    "high_price": {
+                      "type": "number",
+                      "description": "High price"
+                    },
+                    "prev_close_price": {
+                      "type": "number",
+                      "description": "Previous close price"
+                    },
+                    "regular_close_price": {
+                      "type": "number",
+                      "description": "Regular session close price"
+                    },
+                    "all_time_high": {
+                      "type": "number",
+                      "description": "All-time high price"
+                    },
+                    "all_time_high_day": {
+                      "type": "integer",
+                      "description": "Date of all-time high (Unix timestamp in seconds)"
+                    },
+                    "all_time_low": {
+                      "type": "number",
+                      "description": "All-time low price"
+                    },
+                    "all_time_low_day": {
+                      "type": "integer",
+                      "description": "Date of all-time low (Unix timestamp in seconds)"
+                    },
+                    "volume": {
+                      "type": "number",
+                      "description": "Trading volume"
+                    },
+                    "average_volume": {
+                      "type": "number",
+                      "description": "Average trading volume"
+                    },
+                    "total_shares_outstanding": {
+                      "type": "integer",
+                      "description": "Total shares outstanding"
+                    },
+                    "current_total_shares_outstanding": {
+                      "type": "number",
+                      "description": "Current calculated total shares outstanding"
+                    },
+                    "market_cap": {
+                      "type": "number",
+                      "description": "Market capitalization"
+                    },
+                    "current_market_cap": {
+                      "type": "number",
+                      "description": "Current calculated market capitalization"
+                    },
+                    "splits": {
+                      "type": "array",
+                      "description": "Stock split history",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "time": {
+                            "type": "number",
+                            "description": "Split date (Unix timestamp)"
+                          },
+                          "factor": {
+                            "type": "number",
+                            "description": "Split factor"
+                          }
+                        }
+                      }
+                    },
+                    "total_revenue": {
+                      "type": "number",
+                      "description": "Total revenue"
+                    },
+                    "earnings_per_share_fq": {
+                      "type": "number",
+                      "description": "Earnings per share (fiscal quarter)"
+                    },
+                    "earnings_per_share_basic_ttm": {
+                      "type": "number",
+                      "description": "Basic earnings per share (trailing twelve months)"
+                    },
+                    "earnings_per_share_forecast_next_fq": {
+                      "type": "number",
+                      "description": "Forecasted earnings per share (next fiscal quarter)"
+                    },
+                    "earnings_release_date": {
+                      "type": "integer",
+                      "description": "Last earnings release date (Unix timestamp)"
+                    },
+                    "earnings_release_next_date": {
+                      "type": "integer",
+                      "description": "Next earnings release date (Unix timestamp)"
+                    },
+                    "price_earnings_ttm": {
+                      "type": "number",
+                      "description": "Price-to-earnings ratio (trailing twelve months)"
+                    },
+                    "dividends_yield": {
+                      "type": "number",
+                      "description": "Dividend yield"
+                    },
+                    "dps_common_stock_primary_issue_fy": {
+                      "type": "number",
+                      "description": "Dividends per share common stock primary issue (fiscal year)"
+                    },
+                    "beta_1_year": {
+                      "type": "number",
+                      "description": "1-year beta"
+                    },
+                    "expiration": {
+                      "type": "integer",
+                      "description": "Expiration date for derivatives (Unix timestamp)"
+                    },
+                    "days_to_maturity": {
+                      "type": "integer",
+                      "description": "Days to maturity for derivatives"
+                    },
+                    "contract": {
+                      "type": "string",
+                      "description": "Contract code for this symbol"
+                    },
+                    "option_info": {
+                      "type": "array",
+                      "description": "Option chain information",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "name": {
+                            "type": "string",
+                            "description": "Option family name"
+                          },
+                          "type": {
+                            "type": "string",
+                            "description": "Option exercise type (e.g., AMERICAN, EUROPEAN)"
+                          },
+                          "series": {
+                            "type": "array",
+                            "description": "Option series",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "expiration_date": {
+                                  "type": "integer",
+                                  "description": "Expiration date (YYYYMMDD format - e.g. 20260320)"
+                                },
+                                "lot_size": {
+                                  "type": "number",
+                                  "description": "Number of underlying units represented by one option contract"
+                                },
+                                "underlying": {
+                                  "$ref": "#/components/schemas/SymbolCode",
+                                  "description": "Underlying symbol"
+                                },
+                                "strikes": {
+                                  "type": "array",
+                                  "description": "Available strike prices",
+                                  "items": {
+                                    "type": "number"
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    },
+                    "price_scale": {
+                      "type": "integer",
+                      "description": "Price scale (number of decimal places)"
+                    },
+                    "price_tick": {
+                      "type": "number",
+                      "description": "Minimum-movement numerator expressed in price-scale units; interpret with price_scale and tick_size"
+                    },
+                    "fraction": {
+                      "type": "integer",
+                      "description": "Fractional price component (for fractional pricing)"
+                    },
+                    "point_value": {
+                      "type": "number",
+                      "description": "Point value for derivatives"
+                    },
+                    "tick_size": {
+                      "type": "array",
+                      "description": "Variable tick size rules",
+                      "items": {
+                        "type": "number"
+                      }
+                    },
+                    "has_backadjustment": {
+                      "type": "boolean",
+                      "description": "Whether the symbol supports back-adjustment"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v3/symbols/{symbol}/session": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/SymbolPathParam"
+        }
+      ],
+      "get": {
+        "summary": "Trading session information",
+        "description": "Retrieve trading session details including holidays, trading hours, timezone, and session corrections",
+        "responses": {
+          "200": {
+            "headers": {},
+            "description": "success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["code", "last_update"],
+                  "properties": {
+                    "code": {
+                      "$ref": "#/components/schemas/SymbolCode"
+                    },
+                    "holidays": {
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "description": "Exchange-local calendar date in YYYYMMDD format",
+                        "pattern": "^[0-9]{8}$",
+                        "example": "20261225"
+                      }
+                    },
+                    "start_hour": {
+                      "type": "string",
+                      "description": "Session start in exchange-local time. F or Fn means the previous day or n days before the trading day. 24x7 identifies a continuous session.",
+                      "pattern": "^(?:[0-9]{4}(?:F[1-6]?)?|24x7)$",
+                      "example": "2100F"
+                    },
+                    "end_hour": {
+                      "type": "string",
+                      "description": "Session end in exchange-local time. F or Fn means the previous day or n days before the trading day. 24x7 identifies a continuous session.",
+                      "pattern": "^(?:[0-9]{4}(?:F[1-6]?)?|24x7)$",
+                      "example": "2100"
+                    },
+                    "details": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "session_correction": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "start_hour": {
+                                  "type": "string",
+                                  "description": "Corrected session start in exchange-local time",
+                                  "pattern": "^(?:[0-9]{4}(?:F[1-6]?)?|24x7)$",
+                                  "example": "0400"
+                                },
+                                "end_hour": {
+                                  "type": "string",
+                                  "description": "Corrected session end in exchange-local time",
+                                  "pattern": "^(?:[0-9]{4}(?:F[1-6]?)?|24x7)$",
+                                  "example": "1700"
+                                },
+                                "dates": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string",
+                                    "description": "Exchange-local calendar date in YYYYMMDD format",
+                                    "pattern": "^[0-9]{8}$",
+                                    "example": "20261127"
+                                  }
+                                }
+                              }
+                            }
+                          },
+                          "session": {
+                            "type": "string"
+                          },
+                          "description": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    },
+                    "currency_code": {
+                      "type": "string"
+                    },
+                    "description": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    },
+                    "timezone": {
+                      "type": "string"
+                    },
+                    "last_update": {
+                      "type": "integer"
+                    },
+                    "tick_size": {
+                      "type": "string"
+                    },
+                    "price_scale": {
+                      "type": "integer"
+                    },
+                    "point_value": {
+                      "type": "integer"
+                    },
+                    "minimum_movement": {
+                      "type": "integer"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v3/symbols/quotes": {
+      "parameters": [],
+      "get": {
+        "summary": "Latest quote data",
+        "description": "Retrieve the latest quote data for up to 10 symbols",
+        "parameters": [
+          {
+            "name": "codes",
+            "in": "query",
+            "required": true,
+            "description": "Comma-separated list of symbol codes in Exchange:Symbol format. Each code must match the SymbolCode pattern.",
+            "example": "CME_MINI:NQ1!,CME_MINI:ES1!,NASDAQ:TSLA",
+            "schema": {
+              "type": "string",
+              "pattern": "^([A-Z0-9_./-]+:[A-Z0-9_./!-]+)(,[A-Z0-9_./-]+:[A-Z0-9_./!-]+)*$"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/SettlementParam"
+          },
+          {
+            "$ref": "#/components/parameters/BackAdjustmentParam"
+          },
+          {
+            "$ref": "#/components/parameters/ExtendedParam"
+          },
+          {
+            "$ref": "#/components/parameters/SplitAdjustmentParam"
+          },
+          {
+            "$ref": "#/components/parameters/DividendAdjustmentParam"
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/QuotesResponse"
+          },
+          "400": {
+            "description": "Invalid quote request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["error", "message"],
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v3/symbols/search": {
+      "get": {
+        "summary": "Search for symbols",
+        "description": "Search for symbols by text, type, country, or exchange.",
+        "parameters": [
+          {
+            "name": "query",
+            "in": "query",
+            "required": false,
+            "description": "Search query string",
+            "example": "apple",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "exchange",
+            "in": "query",
+            "required": false,
+            "description": "Filter by exchange",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "type",
+            "in": "query",
+            "required": false,
+            "example": "none",
+            "description": "Filter by instrument type",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "crypto",
+                "index",
+                "forex",
+                "futures",
+                "stock",
+                "economic",
+                "etf",
+                "reit",
+                "mutual_fund",
+                "trust_fund",
+                "bond",
+                "bond_gov",
+                "bond_corp",
+                "common_stock",
+                "depository_receipt",
+                "fund",
+                "preferred_stock",
+                "warrant",
+                "crypto_spot",
+                "crypto_fundamental",
+                "crypto_swap",
+                "crypto_futures",
+                "crypto_index",
+                "none"
+              ]
+            }
+          },
+          {
+            "name": "country",
+            "in": "query",
+            "required": false,
+            "example": "US",
+            "description": "Filter by country. 2-letter ISO code",
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Z]{2}$"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "example": 1,
+            "description": "Each page returns up to 50 results.",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response with symbol data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["current_page", "has_more", "symbols"],
+                  "properties": {
+                    "current_page": {
+                      "type": "integer",
+                      "description": "Current page number",
+                      "minimum": 1
+                    },
+                    "has_more": {
+                      "type": "boolean",
+                      "description": "Whether there are more results available"
+                    },
+                    "symbols": {
+                      "type": "array",
+                      "description": "Array of symbol objects",
+                      "items": {
+                        "type": "object",
+                        "required": ["name", "code"],
+                        "properties": {
+                          "name": {
+                            "type": "string",
+                            "description": "Symbol name"
+                          },
+                          "code": {
+                            "type": "string",
+                            "description": "Full symbol code (e.g., NASDAQ:AAPL)"
+                          },
+                          "type": {
+                            "type": "string",
+                            "description": "Type of financial instrument"
+                          },
+                          "exchange": {
+                            "type": "string",
+                            "description": "Exchange where the symbol is traded"
+                          },
+                          "currency_code": {
+                            "type": "string",
+                            "description": "Currency code for the symbol"
+                          },
+                          "country": {
+                            "type": "string",
+                            "description": "Country where the symbol is from"
+                          },
+                          "description": {
+                            "type": "string",
+                            "description": "Description of the symbol"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v3/symbols/exchanges": {
+      "get": {
+        "summary": "List available exchanges",
+        "description": "Retrieve exchange prefixes, names, and descriptions.",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Available exchanges",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExchangeCatalogResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Exchange catalog temporarily unavailable"
+          }
+        }
+      }
+    },
+    "/v3/symbols/{symbol}/fundamentals": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/SymbolPathParam"
+        }
+      ],
+      "get": {
+        "summary": "Fundamental data and statistics",
+        "description": "Retrieve comprehensive fundamental data including company info, valuation ratios, profitability metrics, balance sheet, cash flow, income statement, and more",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response with fundamental data and values",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FundamentalsResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v3/symbols/{symbol}/fundamentals/series": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/SymbolPathParam"
+        }
+      ],
+      "get": {
+        "summary": "Fundamental Data in Time Series format",
+        "description": "Retrieve historical data for specific indicators. A maximum of 5 Indicator IDs can be requested at a time. The list of available Indicator IDs is provided in the fundamental_series and technical_series fields of the /v3/symbols/fundamentals endpoint. Some parameters may not apply to certain Indicator IDs, and not all indicators are supported for every symbol.",
+        "parameters": [
+          {
+            "name": "ids",
+            "in": "query",
+            "required": true,
+            "description": "(Required) Comma-separated list of indicator IDs (maximum 5). Available IDs can be retrieved from /v3/symbols/fundamentals endpoint's 'fundamental_series' and 'technical_series' fields.",
+            "example": "diluted_shares_outstanding_fy,ebit_fq",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response with fundamental time series data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FundamentalsSeriesResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v3/symbols/fundamentals": {
+      "parameters": [],
+      "get": {
+        "summary": "Meta data for /fundamentals endpoints",
+        "description": "Retrieve the fundamentals schema and metadata. This endpoint returns the layout and definitions only — it does not include actual data, which are provided by /v3/symbols/{symbol}/fundamentals.",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response with fundamental metadata without values",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FundamentalsMetaResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v3/options/contracts": {
+      "parameters": [],
+      "get": {
+        "summary": "List option contracts",
+        "description": "List option contracts from the SIP data feed for US equities (stocks and ETFs) and supported indices only. Filter by strike, range, expiration, or type, and use next_token for further pages. Returned contract codes can be used with /v3/symbols/quotes and, where available, /v3/symbols/{symbol}/series.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/SymbolCodeQueryParam"
+          },
+          {
+            "name": "strike",
+            "in": "query",
+            "required": false,
+            "description": "(Optional) Exact strike price. Takes precedence over range when both are provided.",
+            "schema": {
+              "type": "number",
+              "minimum": 0
+            }
+          },
+          {
+            "name": "expiration",
+            "in": "query",
+            "required": false,
+            "description": "(Optional) Exact expiration date. Validated but not used when from or to is provided. (Format: YYYY-MM-DD; must be a valid calendar date)",
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "pattern": "^(?!0000)[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$"
+            }
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "required": false,
+            "description": "(Optional) Minimum expiration date. When provided, expiration parameter is ignored. (Format: YYYY-MM-DD; must be a valid calendar date)",
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "pattern": "^(?!0000)[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "required": false,
+            "description": "(Optional) Maximum expiration date. When provided, expiration parameter is ignored. (Format: YYYY-MM-DD; must be a valid calendar date)",
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "pattern": "^(?!0000)[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$"
+            }
+          },
+          {
+            "name": "range",
+            "in": "query",
+            "required": false,
+            "description": "(Optional) Strike price range as a percentage of the current underlying price. For example, range=10 returns only options with strikes within ±10% of the current price. Values above 1000 are capped at 1000. If no strike, range, expiration, from, or to selector is provided, range defaults to 1000.",
+            "example": 10,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 1000
+            }
+          },
+          {
+            "name": "type",
+            "in": "query",
+            "required": false,
+            "description": "(Optional) Filter by option type.",
+            "schema": {
+              "type": "string",
+              "enum": ["call", "put"]
+            }
+          },
+          {
+            "name": "next_token",
+            "in": "query",
+            "required": false,
+            "description": "(Optional) Pagination token from a previous /v3/options/contracts response. Send the same filters plus next_token to request the next page.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/OptionContractsResponse"
+          },
+          "400": {
+            "$ref": "#/components/responses/RequestError"
+          }
+        }
+      }
+    },
+    "/v3/options/snapshot": {
+      "parameters": [],
+      "get": {
+        "summary": "Option snapshots",
+        "description": "Get option snapshots from the SIP data feed for US equities (stocks and ETFs) and supported indices only. Rows may include previous and current daily bars, latest quote and trade, Greeks, and implied volatility. Filter by strike, range, expiration, or type, and use next_token for further pages. Timestamps are Unix milliseconds.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/SymbolCodeQueryParam"
+          },
+          {
+            "name": "strike",
+            "in": "query",
+            "required": false,
+            "description": "(Optional) Exact strike price. Takes precedence over range when both are provided.",
+            "schema": {
+              "type": "number",
+              "minimum": 0
+            }
+          },
+          {
+            "name": "expiration",
+            "in": "query",
+            "required": false,
+            "description": "(Optional) Exact expiration date. Validated but not used when from or to is provided. (Format: YYYY-MM-DD; must be a valid calendar date)",
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "pattern": "^(?!0000)[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$"
+            }
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "required": false,
+            "description": "(Optional) Minimum expiration date. When provided, expiration parameter is ignored. (Format: YYYY-MM-DD; must be a valid calendar date)",
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "pattern": "^(?!0000)[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "required": false,
+            "description": "(Optional) Maximum expiration date. When provided, expiration parameter is ignored. (Format: YYYY-MM-DD; must be a valid calendar date)",
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "pattern": "^(?!0000)[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$"
+            }
+          },
+          {
+            "name": "range",
+            "in": "query",
+            "required": false,
+            "description": "(Optional) Strike price range as a percentage of the current underlying price. For example, range=10 returns only options with strikes within ±10% of the current price. Values above 1000 are capped at 1000. Ignored when strike is provided. If no strike, range, expiration, from, or to selector is provided, range defaults to 1000.",
+            "example": 10,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 1000
+            }
+          },
+          {
+            "name": "type",
+            "in": "query",
+            "required": false,
+            "description": "(Optional) Filter by option type.",
+            "schema": {
+              "type": "string",
+              "enum": ["call", "put"]
+            }
+          },
+          {
+            "name": "next_token",
+            "in": "query",
+            "required": false,
+            "description": "(Optional) Pagination token from a previous /v3/options/snapshot response. Send the same filters plus next_token to request the next page.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/OptionSnapshotsResponse"
+          },
+          "400": {
+            "$ref": "#/components/responses/RequestError"
+          }
+        }
+      }
+    },
+    "/v3/options/quotes": {
+      "get": {
+        "summary": "Option quotes by strike or expiration",
+        "description": "Get all matching option-chain rows from the Global feed for supported stock, ETF, index, and futures underlyings. For range requests, up to 100 contracts with strikes closest to the underlying price may also include last_price, volume, open_interest, open_interest_time, change, and change_percent. Other rows retain available bid/ask, Greeks, and contract fields. Additional fields may be omitted. With no strike, range, expiration, from, or to selector, range defaults to 1000. Strike takes precedence over range.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/SymbolCodeQueryParam"
+          },
+          {
+            "name": "strike",
+            "in": "query",
+            "required": false,
+            "description": "(Optional) Strike price for exact match filtering.",
+            "schema": {
+              "type": "number",
+              "minimum": 0
+            }
+          },
+          {
+            "name": "expiration",
+            "in": "query",
+            "required": false,
+            "description": "(Optional) Exact expiration date. Validated but not used when from or to is provided. (Format: YYYY-MM-DD; must be a valid calendar date)",
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "pattern": "^(?!0000)[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$"
+            }
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "required": false,
+            "description": "(Optional) Minimum expiration date. When provided, expiration parameter is ignored.  (Format: YYYY-MM-DD; must be a valid calendar date)",
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "pattern": "^(?!0000)[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "required": false,
+            "description": "(Optional) Maximum expiration date. When provided, expiration parameter is ignored. (Format: YYYY-MM-DD; must be a valid calendar date)",
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "pattern": "^(?!0000)[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$"
+            }
+          },
+          {
+            "name": "range",
+            "in": "query",
+            "required": false,
+            "description": "(Optional) Strike price range as a percentage of the current underlying price. When that price is available, range=10 returns only options with strikes within ±10% of it. Values above 1000 are capped at 1000. Ignored when strike is provided. If no strike, range, expiration, from, or to selector is provided, range defaults to 1000.",
+            "example": 10,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 1000
+            }
+          },
+          {
+            "name": "type",
+            "in": "query",
+            "required": false,
+            "description": "(Optional) Filter by option type.",
+            "schema": {
+              "type": "string",
+              "enum": ["call", "put"]
+            }
+          },
+          {
+            "$ref": "#/components/parameters/SortByParam"
+          },
+          {
+            "$ref": "#/components/parameters/SortOrderParam"
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/OptionDataResponse"
+          },
+          "400": {
+            "$ref": "#/components/responses/RequestError"
+          }
+        }
+      }
+    },
+    "/v3/calendar/dividends": {
+      "parameters": [],
+      "get": {
+        "summary": "Dividend calendar",
+        "description": "Retrieve dividend calendar data for a specified time range",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/WeekRangeParam"
+          },
+          {
+            "$ref": "#/components/parameters/CalendarMonthParam"
+          },
+          {
+            "$ref": "#/components/parameters/CountryCodeParam"
+          },
+          {
+            "$ref": "#/components/parameters/CalendarCodeParam"
+          },
+          {
+            "$ref": "#/components/parameters/CalendarLocalCurrencyParam"
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/DividendResponse"
+          },
+          "400": {
+            "$ref": "#/components/responses/RequestError"
+          }
+        }
+      }
+    },
+    "/v3/calendar/earnings": {
+      "get": {
+        "summary": "Earnings calendar",
+        "description": "Retrieve earnings calendar data for a specified time range",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/WeekRangeParam"
+          },
+          {
+            "$ref": "#/components/parameters/CalendarMonthParam"
+          },
+          {
+            "$ref": "#/components/parameters/CountryCodeParam"
+          },
+          {
+            "$ref": "#/components/parameters/CalendarCodeParam"
+          },
+          {
+            "$ref": "#/components/parameters/CalendarLocalCurrencyParam"
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/EarningsResponse"
+          },
+          "400": {
+            "$ref": "#/components/responses/RequestError"
+          }
+        }
+      }
+    },
+    "/v3/calendar/ipos": {
+      "parameters": [],
+      "get": {
+        "summary": "IPO calendar",
+        "description": "Retrieve IPO calendar data for a specified time range",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/WeekRangeParam"
+          },
+          {
+            "$ref": "#/components/parameters/CalendarMonthParam"
+          },
+          {
+            "$ref": "#/components/parameters/CountryCodeParam"
+          },
+          {
+            "$ref": "#/components/parameters/CalendarCodeParam"
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/IpoResponse"
+          },
+          "400": {
+            "$ref": "#/components/responses/RequestError"
+          }
+        }
+      }
+    },
+    "/v3/calendar/events": {
+      "parameters": [],
+      "get": {
+        "summary": "Economic events calendar",
+        "description": "Retrieve economic events calendar data for a specified time range",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/WeekRangeParam"
+          },
+          {
+            "$ref": "#/components/parameters/CalendarMonthParam"
+          },
+          {
+            "$ref": "#/components/parameters/CountryCodeParam"
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/EconomicEventsResponse"
+          },
+          "400": {
+            "$ref": "#/components/responses/RequestError"
+          }
+        }
+      }
+    },
+    "/v3/newsfeed": {
+      "parameters": [],
+      "get": {
+        "summary": "News feed",
+        "description": "Retrieve latest financial news with optional keyword and field-specific filtering",
+        "parameters": [
+          {
+            "name": "keywords",
+            "in": "query",
+            "required": false,
+            "description": "(Optional) Keywords to include items that match one of the keywords in the title, content, or related symbols. Values may be separated by spaces or commas; provide up to 10 values, each with at least 2 characters and at most 50 characters. e.g. apple,tesla",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "source",
+            "in": "query",
+            "required": false,
+            "description": "(Optional) Return only news items whose source exactly matches this value. Matching is case-insensitive. The value must contain at least 2 characters and at most 50 characters.",
+            "schema": {
+              "type": "string",
+              "minLength": 2,
+              "maxLength": 50
+            }
+          },
+          {
+            "name": "related_symbols",
+            "in": "query",
+            "required": false,
+            "description": "(Optional) Return news items that contain any matching related symbol. Values may be separated by spaces or commas; provide up to 10 values, each with at least 2 characters and at most 50 characters. Exchange-qualified values such as NASDAQ:AAPL require the full symbol; symbol-only values such as AAPL match related symbols after ignoring the exchange prefix.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "title",
+            "in": "query",
+            "required": false,
+            "description": "(Optional) Return only news items whose title contains these values. Matching is case-insensitive and partial; values may be separated by spaces or commas; provide up to 10 values, each with at least 2 characters and at most 50 characters.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "content",
+            "in": "query",
+            "required": false,
+            "description": "(Optional) Return only news items whose content contains these values. Matching is case-insensitive and partial; values may be separated by spaces or commas; provide up to 10 values, each with at least 2 characters and at most 50 characters.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "example": 50,
+            "description": "(Optional) Limit the number of news items returned. Must be an integer between 1 and 500. Default is 500.",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "description": "Page number for pagination",
+            "example": 1,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "name": "archive",
+            "in": "query",
+            "required": false,
+            "description": "(Optional) Set to true to search older archived news when using filters. Archived results may omit very recent items.",
+            "example": false,
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "required": false,
+            "description": "(Optional) UTC start date. Must be a valid calendar date in YYYY-MM-DD format. When provided without to, to is treated as the current UTC date.",
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "pattern": "^(?!0000)[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "required": false,
+            "description": "(Optional) UTC end date. Must be a valid calendar date in YYYY-MM-DD format. Validated but not used when from is absent. Future dates are treated as the current UTC date.",
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "pattern": "^(?!0000)[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/NewsfeedResponse"
+          },
+          "400": {
+            "description": "A filter value is shorter than 3 characters.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["error", "message"],
+                  "properties": {
+                    "error": {
+                      "type": "string",
+                      "enum": ["invalid_value"]
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v3/newsfeed/list": {
+      "parameters": [],
+      "get": {
+        "summary": "News feed sources",
+        "description": "Retrieve the list of available news feed source names.",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/NewsfeedSourceListResponse"
+          }
+        }
+      }
+    },
+    "/v3/screeners/stock": {
+      "get": {
+        "summary": "Get available stock screener parameters",
+        "description": "Retrieve the list of available fields and parameters for stock screening",
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/ScreenerParametersResponse"
+          },
+          "400": {
+            "$ref": "#/components/responses/RequestError"
+          }
+        }
+      },
+      "post": {
+        "summary": "Stock Screener",
+        "description": "Retrieve stock data based on specified filter criteria",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/ScreenerDataResponse"
+          },
+          "400": {
+            "$ref": "#/components/responses/RequestError"
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "allOf": [
+                  {
+                    "$ref": "#/components/schemas/ScreenerRequest"
+                  },
+                  {
+                    "description": "Additional filter properties may use scalar fields listed in available_fields by this product's Get Screener endpoint. Use a numeric or string field name directly for typed equality or membership. Numeric fields also support the _min, _max, and _range suffixes for inclusive bounds. Examples: market_cap_min, market_cap_max, volume_min, volume_max, close_min, and close_max."
+                  }
+                ]
+              },
+              "example": {
+                "fields": ["close", "volume", "market_cap"],
+                "exchanges": ["NYSE", "NASDAQ"],
+                "countries": ["US", "CA"],
+                "page": 1,
+                "ignore_invalid": false,
+                "sortBy": "market_cap",
+                "sortOrder": "desc"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v3/screeners/etf": {
+      "get": {
+        "summary": "Get available ETF screener parameters",
+        "description": "Retrieve the list of available fields and parameters for ETF screening",
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/ScreenerParametersResponse"
+          },
+          "400": {
+            "$ref": "#/components/responses/RequestError"
+          }
+        }
+      },
+      "post": {
+        "summary": "ETF Screener",
+        "description": "Retrieve ETF data based on specified filter criteria",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/ScreenerDataResponse"
+          },
+          "400": {
+            "$ref": "#/components/responses/RequestError"
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "allOf": [
+                  {
+                    "$ref": "#/components/schemas/ScreenerRequest"
+                  },
+                  {
+                    "description": "Additional filter properties may use scalar fields listed in available_fields by this product's Get Screener endpoint. Use a numeric or string field name directly for typed equality or membership. Numeric fields also support the _min, _max, and _range suffixes for inclusive bounds. Examples: asset_class, expense_ratio_min, expense_ratio_max, aum_min, and aum_max."
+                  }
+                ]
+              },
+              "example": {
+                "fields": ["close", "volume", "nav"],
+                "exchanges": ["NYSE", "NASDAQ"],
+                "countries": ["US", "CA"],
+                "page": 1,
+                "sortBy": "nav",
+                "sortOrder": "desc"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v3/screeners/bond": {
+      "get": {
+        "summary": "Get available bond screener parameters",
+        "description": "Retrieve the list of available fields and parameters for bond screening",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/ScreenerParametersResponse"
+          },
+          "400": {
+            "$ref": "#/components/responses/RequestError"
+          }
+        }
+      },
+      "post": {
+        "summary": "Bond Screener",
+        "description": "Retrieve bond data based on specified filter criteria",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/ScreenerDataResponse"
+          },
+          "400": {
+            "$ref": "#/components/responses/RequestError"
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "allOf": [
+                  {
+                    "$ref": "#/components/schemas/ScreenerRequest"
+                  },
+                  {
+                    "description": "Additional filter properties may use scalar fields listed in available_fields by this product's Get Screener endpoint. Use a numeric or string field name directly for typed equality or membership. Numeric fields also support the _min, _max, and _range suffixes for inclusive bounds. Examples: yield_to_maturity_min, yield_to_maturity_max, days_to_maturity_min, days_to_maturity_max, snp_rating, and maturity_date_range using numeric YYYYMMDD bounds such as [20270101, 20301231]."
+                  }
+                ]
+              },
+              "example": {
+                "fields": ["close_percent", "yield_to_maturity", "volume"],
+                "exchanges": [],
+                "countries": ["US"],
+                "page": 1,
+                "sortBy": "yield_to_maturity",
+                "sortOrder": "desc"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v3/screeners/crypto": {
+      "get": {
+        "summary": "Get available crypto screener parameters",
+        "description": "Retrieve the list of available fields and parameters for crypto screening",
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/ScreenerParametersResponse"
+          },
+          "400": {
+            "$ref": "#/components/responses/RequestError"
+          }
+        }
+      },
+      "post": {
+        "summary": "Crypto Screener",
+        "description": "Retrieve cryptocurrency data based on specified filter criteria",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/ScreenerDataResponse"
+          },
+          "400": {
+            "$ref": "#/components/responses/RequestError"
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "allOf": [
+                  {
+                    "$ref": "#/components/schemas/ScreenerRequest"
+                  },
+                  {
+                    "description": "Additional filter properties may use scalar fields listed in available_fields by this product's Get Screener endpoint. Use a numeric or string field name directly for typed equality or membership. Numeric fields also support the _min, _max, and _range suffixes for inclusive bounds. Examples: market_cap_min, market_cap_max, volume_min, volume_max, close_min, and close_max."
+                  }
+                ]
+              },
+              "example": {
+                "fields": ["close", "volume", "market_cap"],
+                "page": 1,
+                "sortBy": "market_cap",
+                "sortOrder": "desc"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v3/documents": {
+      "parameters": [],
+      "get": {
+        "summary": "List documents for a symbol",
+        "description": "Retrieve a list of available documents (filings, transcripts, reports) for a given symbol",
+        "parameters": [
+          {
+            "name": "code",
+            "in": "query",
+            "required": true,
+            "description": "(Required) Symbol code in Exchange:Symbol format",
+            "example": "NASDAQ:AAPL",
+            "schema": {
+              "$ref": "#/components/schemas/SymbolCode"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response with list of documents",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/DocumentItem"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/RequestError"
+          }
+        }
+      }
+    },
+    "/v3/documents/{id}": {
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "description": "Document ID in format type:uniqueidentifier (e.g., transcripts:2133670 or report:2048334-36ccace7a771cb10e19ed97b7d474ca3)",
+          "example": "transcripts:2133670",
+          "schema": {
+            "type": "string",
+            "pattern": "^[a-zA-Z]+:[a-zA-Z0-9-]+$"
+          }
+        }
+      ],
+      "get": {
+        "summary": "Retrieve a specific document",
+        "description": "Retrieve the content of a specific document. Returns JSON with title, published_at, and content for non-PDF documents, or binary PDF data for PDF documents. Use text=true to get extracted text from PDF documents.",
+        "parameters": [
+          {
+            "name": "code",
+            "in": "query",
+            "required": true,
+            "description": "(Required) Symbol code in Exchange:Symbol format",
+            "example": "NASDAQ:AAPL",
+            "schema": {
+              "$ref": "#/components/schemas/SymbolCode"
+            }
+          },
+          {
+            "name": "text",
+            "in": "query",
+            "required": false,
+            "description": "(Optional) Set to 'true' to extract text from PDF documents. When enabled, PDF documents return JSON {title, published_at, content} instead of binary data.",
+            "example": true,
+            "schema": {
+              "type": "boolean",
+              "default": true
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Document content, or a no_data response when content is unavailable.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/DocumentContent"
+                    },
+                    {
+                      "$ref": "#/components/schemas/UnavailableDocument"
+                    }
+                  ]
+                },
+                "example": {
+                  "title": "Product Launch",
+                  "published_at": 1757437200,
+                  "content": "Tim Cook ... and so on"
+                }
+              },
+              "application/pdf": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary",
+                  "description": "PDF file binary data (for documents where is_pdf is true)"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/RequestError"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "CorporateActionsResponse": {
+        "type": "object",
+        "required": ["total_count", "range", "last_update", "data"],
+        "example": {
+          "total_count": 1,
+          "range": "From 2026-07-01 to 2026-07-31",
+          "last_update": 1782864000000,
+          "data": [{"code": "SIP:AAPL", "action_type": "cash_dividend", "process_date": "2026-07-03", "ex_date": "2026-07-07", "rate": 0.25}]
+        },
+        "properties": {
+          "total_count": {"type": "integer", "minimum": 0},
+          "range": {"type": "string", "example": "From 2026-07-01 to 2026-07-31"},
+          "last_update": {"$ref": "#/components/schemas/UnixTimestampMs"},
+          "data": {"type": "array", "items": {"$ref": "#/components/schemas/CorporateActionItem"}}
+        }
+      },
+      "CorporateActionItem": {
+        "type": "object",
+        "description": "Fields vary by action type. A code filter matches any participating symbol.",
+        "required": ["code", "action_type", "process_date"],
+        "properties": {
+          "code": {"$ref": "#/components/schemas/SipSymbolCode"},
+          "action_type": {
+            "type": "string",
+            "description": "Action category, such as cash_dividend or reverse_split. Additional categories may appear."
+          },
+          "process_date": {"type": "string", "format": "date"},
+          "ex_date": {"type": "string", "format": "date"},
+          "record_date": {"type": "string", "format": "date"},
+          "payable_date": {"type": "string", "format": "date"},
+          "effective_date": {"type": "string", "format": "date"},
+          "rate": {"oneOf": [{"type": "number"}, {"type": "string"}], "example": 0.25},
+          "old_rate": {"oneOf": [{"type": "number"}, {"type": "string"}]},
+          "new_rate": {"oneOf": [{"type": "number"}, {"type": "string"}]}
+        },
+        "additionalProperties": true
+      },
+      "ExchangeCatalogResponse": {
+        "type": "object",
+        "required": ["current_page", "has_more", "exchanges"],
+        "properties": {
+          "current_page": {
+            "type": "integer",
+            "description": "Current page number"
+          },
+          "has_more": {
+            "type": "boolean",
+            "description": "Whether more results are available"
+          },
+          "exchanges": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ExchangeCatalogEntry"
+            }
+          }
+        }
+      },
+      "ExchangeCatalogEntry": {
+        "type": "object",
+        "required": ["exchange", "name", "description", "country", "supported_asset_types"],
+        "properties": {
+          "exchange": {
+            "type": "string",
+            "description": "Exchange prefix"
+          },
+          "name": {
+            "type": "string",
+            "description": "Exchange name"
+          },
+          "description": {
+            "type": "string",
+            "description": "Exchange description"
+          },
+          "country": {
+            "type": "string",
+            "description": "Exchange country or Global"
+          },
+          "supported_asset_types": {
+            "type": "array",
+            "description": "Available asset types",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "SymbolCode": {
+        "type": "string",
+        "description": "Symbol code in Exchange:Symbol format",
+        "example": "NASDAQ:AAPL",
+        "pattern": "^[A-Z0-9_./-]+:[A-Z0-9_./!&-]+$"
+      },
+      "SipSymbolCode": {
+        "type": "string",
+        "description": "US consolidated-market symbol with the required SIP prefix",
+        "example": "SIP:AAPL",
+        "pattern": "^SIP:[A-Z0-9_./!-]+$"
+      },
+      "StandardTradeResponseData": {
+        "type": "object",
+        "description": "Standard tick trades for a UTC calendar day or a rolling snapshot. Rolling responses include as_of and window_start in Unix milliseconds.",
+        "required": ["code", "bar_type", "series"],
+        "properties": {
+          "code": {
+            "$ref": "#/components/schemas/SymbolCode"
+          },
+          "bar_type": {
+            "type": "string",
+            "enum": ["1T"]
+          },
+          "last_update": {
+            "$ref": "#/components/schemas/UnixTimestampMs"
+          },
+          "as_of": {
+            "$ref": "#/components/schemas/UnixTimestampMs"
+          },
+          "window_start": {
+            "$ref": "#/components/schemas/UnixTimestampMs"
+          },
+          "error": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "series": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StandardTradePoint"
+            }
+          }
+        }
+      },
+      "TradeDirection": {
+        "type": "string",
+        "enum": ["buy", "sell"],
+        "description": "Inferred trade direction",
+        "example": "buy"
+      },
+      "StandardTradePoint": {
+        "type": "object",
+        "required": ["time", "close"],
+        "properties": {
+          "time": {
+            "$ref": "#/components/schemas/UnixTimestamp"
+          },
+          "type": {
+            "$ref": "#/components/schemas/TradeDirection"
+          },
+          "close": {
+            "type": "number",
+            "description": "Trade price."
+          },
+          "volume": {
+            "type": "number",
+            "description": "Trade size, when available."
+          }
+        }
+      },
+      "SipSeriesResponseData": {
+        "type": "object",
+        "description": "Time-series response for a SIP symbol.",
+        "additionalProperties": false,
+        "required": ["code", "last_update", "bar_type", "series"],
+        "properties": {
+          "code": {
+            "$ref": "#/components/schemas/SipSymbolCode"
+          },
+          "error": {
+            "type": "string",
+            "description": "data_unavailable when no data is available."
+          },
+          "message": {
+            "type": "string",
+            "description": "Reason no data is available."
+          },
+          "bar_end": {
+            "$ref": "#/components/schemas/UnixTimestamp",
+            "description": "End of the newest non-tick bar, in Unix seconds."
+          },
+          "last_update": {
+            "$ref": "#/components/schemas/UnixTimestampMs"
+          },
+          "bar_type": {
+            "type": "string",
+            "description": "Effective interval in compact form, for example 1m or 1s."
+          },
+          "series": {
+            "type": "array",
+            "description": "Tick interval 1 uses trade points. Other intervals use OHLCV bars; second intervals without trades are omitted.",
+            "items": {
+              "$ref": "#/components/schemas/SipSeriesPoint"
+            }
+          }
+        }
+      },
+      "SipTradesResponseData": {
+        "type": "object",
+        "description": "Trade response for a SIP symbol.",
+        "additionalProperties": false,
+        "required": ["code", "last_update", "bar_type", "series"],
+        "properties": {
+          "code": {
+            "$ref": "#/components/schemas/SipSymbolCode"
+          },
+          "last_update": {
+            "$ref": "#/components/schemas/UnixTimestampMs"
+          },
+          "bar_type": {
+            "type": "string",
+            "enum": ["1T"]
+          },
+          "as_of": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Exclusive rolling-window end in Unix milliseconds. Included when window applies."
+          },
+          "window_start": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Inclusive rolling-window start in Unix milliseconds. Included when window applies."
+          },
+          "error": {
+            "type": "string",
+            "description": "data_unavailable when no data is available."
+          },
+          "message": {
+            "type": "string",
+            "description": "Reason no data is available."
+          },
+          "series": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SipSeriesPoint"
+            }
+          }
+        }
+      },
+      "SipSeriesPoint": {
+        "type": "object",
+        "required": ["time", "close"],
+        "properties": {
+          "time": {
+            "$ref": "#/components/schemas/UnixTimestamp"
+          },
+          "us": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Trade timestamp in Unix microseconds. Included in tick series and trades."
+          },
+          "type": {
+            "type": "string",
+            "description": "Inferred trade direction for tick data.",
+            "enum": ["buy", "sell"]
+          },
+          "open": {
+            "type": "number",
+            "description": "Open price of the bar."
+          },
+          "high": {
+            "type": "number",
+            "description": "High price of the bar."
+          },
+          "low": {
+            "type": "number",
+            "description": "Low price of the bar."
+          },
+          "close": {
+            "type": "number",
+            "description": "Trade price or close price of the bar."
+          },
+          "volume": {
+            "type": "number",
+            "description": "Trade size or volume of the bar."
+          },
+          "trade_id": {
+            "type": "integer",
+            "description": "Trade identifier for tick data."
+          },
+          "trade_exchange": {
+            "type": "string",
+            "description": "Trade exchange for tick data."
+          },
+          "tape": {
+            "type": "string",
+            "description": "Consolidated tape for tick data."
+          },
+          "trade_conditions": {
+            "type": "array",
+            "description": "Trade condition codes for tick data.",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "SipHistoryResponseData": {
+        "type": "object",
+        "description": "Archived time-series response for a SIP symbol.",
+        "additionalProperties": false,
+        "required": ["code", "bar_type", "series"],
+        "properties": {
+          "code": {
+            "$ref": "#/components/schemas/SipSymbolCode"
+          },
+          "error": {
+            "type": "string",
+            "description": "data_unavailable when no data is available."
+          },
+          "message": {
+            "type": "string",
+            "description": "Reason no data is available."
+          },
+          "available_start_date": {
+            "type": "string",
+            "format": "date",
+            "description": "Earliest available date (America/New_York), when known."
+          },
+          "last_update": {
+            "$ref": "#/components/schemas/UnixTimestampMs"
+          },
+          "bar_type": {
+            "type": "string",
+            "description": "Effective interval in compact form, for example 1m or 1s."
+          },
+          "series": {
+            "type": "array",
+            "description": "OHLCV bars; second intervals without trades are omitted.",
+            "items": {
+              "$ref": "#/components/schemas/OHLCV"
+            }
+          }
+        }
+      },
+      "SipQuoteData": {
+        "type": "object",
+        "description": "Latest quote information for a SIP symbol",
+        "required": ["code", "status", "quote_time", "bid", "ask"],
+        "properties": {
+          "code": {
+            "$ref": "#/components/schemas/SipSymbolCode"
+          },
+          "status": {
+            "type": "string",
+            "description": "Current market status.",
+            "enum": ["OPEN", "CLOSED", "PRE", "POST", "HOLIDAY"]
+          },
+          "lp_time": {
+            "$ref": "#/components/schemas/UnixTimestamp",
+            "description": "Time of the last price update, in Unix seconds."
+          },
+          "quote_time": {
+            "$ref": "#/components/schemas/UnixTimestamp",
+            "description": "Time of the latest bid and ask update, in Unix seconds."
+          },
+          "bid": {
+            "type": "number"
+          },
+          "ask": {
+            "type": "number"
+          },
+          "bid_size": {
+            "type": "number"
+          },
+          "ask_size": {
+            "type": "number"
+          },
+          "bid_exchange": {
+            "type": "string",
+            "description": "Exchange for the current bid."
+          },
+          "ask_exchange": {
+            "type": "string",
+            "description": "Exchange for the current ask."
+          },
+          "last_price": {
+            "type": "number"
+          },
+          "luld": {
+            "type": "object",
+            "description": "Latest limit-band state when available.",
+            "properties": {
+              "timestamp": {
+                "$ref": "#/components/schemas/UnixTimestamp"
+              },
+              "limit_up_price": {
+                "type": "number"
+              },
+              "limit_down_price": {
+                "type": "number"
+              },
+              "indicator": {
+                "type": "string"
+              },
+              "tape": {
+                "type": "string"
+              }
+            }
+          },
+          "trading_status": {
+            "type": "object",
+            "description": "Latest trading-status state when available.",
+            "properties": {
+              "timestamp": {
+                "$ref": "#/components/schemas/UnixTimestamp"
+              },
+              "code": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              },
+              "reason_code": {
+                "type": "string"
+              },
+              "reason_message": {
+                "type": "string"
+              },
+              "tape": {
+                "type": "string"
+              }
+            }
+          },
+          "message": {
+            "type": "string",
+            "description": "Present when quote data is unavailable."
+          },
+          "error": {
+            "type": "string",
+            "description": "Present when this row reports a per-symbol error."
+          }
+        },
+        "additionalProperties": true
+      },
+      "SipQuoteError": {
+        "type": "object",
+        "description": "A per-code error.",
+        "required": ["code", "message", "error"],
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "error": {
+            "type": "string",
+            "enum": [
+              "unsupported_for_endpoint",
+              "invalid_format",
+              "invalid_symbol",
+              "no_data"
+            ]
+          }
+        }
+      },
+      "SipQuotesResponseData": {
+        "type": "object",
+        "additionalProperties": false,
+        "description": "Latest SIP quote data and per-code errors.",
+        "required": ["total_items", "data"],
+        "properties": {
+          "last_update": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/UnixTimestampMs"
+              }
+            ],
+            "nullable": true
+          },
+          "total_items": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "data": {
+            "type": "array",
+            "items": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/SipQuoteData"
+                },
+                {
+                  "$ref": "#/components/schemas/SipQuoteError"
+                }
+              ]
+            }
+          }
+        }
+      },
+      "SipErrorResponse": {
+        "type": "object",
+        "required": ["error", "message"],
+        "properties": {
+          "error": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          }
+        }
+      },
+      "UnixTimestamp": {
+        "type": "number",
+        "description": "Unix timestamp (seconds)",
+        "example": 1717238400
+      },
+      "UnixTimestampMs": {
+        "type": "integer",
+        "description": "Unix timestamp (milliseconds)",
+        "example": 1717238400000
+      },
+      "OHLCV": {
+        "type": "object",
+        "description": "Time, Open (optional), High (optional), Low (optional), Close, Volume (optional), Type (optional)",
+        "required": ["time", "close"],
+        "properties": {
+          "time": {
+            "$ref": "#/components/schemas/UnixTimestamp"
+          },
+          "type": {
+            "$ref": "#/components/schemas/TradeDirection"
+          },
+          "open": {
+            "type": "number",
+            "description": "Open price of the bar",
+            "example": 100
+          },
+          "high": {
+            "type": "number",
+            "description": "High price of the bar",
+            "example": 105
+          },
+          "low": {
+            "type": "number",
+            "description": "Low price of the bar",
+            "example": 100
+          },
+          "close": {
+            "type": "number",
+            "description": "Close price of the bar or the latest available price",
+            "example": 102.5
+          },
+          "volume": {
+            "type": "number",
+            "description": "Trading volume for the bar",
+            "example": 120
+          }
+        }
+      },
+      "HistoricalDataResponse": {
+        "type": "object",
+        "description": "Standard historical data response format",
+        "additionalProperties": false,
+        "required": ["code", "last_update", "bar_type", "series"],
+        "properties": {
+          "code": {
+            "$ref": "#/components/schemas/SymbolCode"
+          },
+          "bar_end": {
+            "$ref": "#/components/schemas/UnixTimestamp",
+            "description": "Unix timestamp (seconds) marking the end time of the most recent bar"
+          },
+          "last_update": {
+            "$ref": "#/components/schemas/UnixTimestampMs",
+            "description": "The last update time in Unix timestamp (milliseconds)"
+          },
+          "bar_type": {
+            "type": "string",
+            "description": "The type of bar used for historical data",
+            "example": "1m"
+          },
+          "series": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OHLCV"
+            }
+          }
+        }
+      },
+      "ArchiveHistoryResponseData": {
+        "type": "object",
+        "description": "Archived time-series response.",
+        "additionalProperties": false,
+        "required": ["code", "bar_type", "series"],
+        "properties": {
+          "code": {
+            "$ref": "#/components/schemas/SymbolCode"
+          },
+          "error": {
+            "type": "string",
+            "description": "Error code when data is unavailable."
+          },
+          "message": {
+            "type": "string",
+            "description": "Message when data is unavailable."
+          },
+          "available_start_date": {
+            "type": "string",
+            "description": "Earliest available period when provided."
+          },
+          "last_update": {
+            "$ref": "#/components/schemas/UnixTimestampMs"
+          },
+          "bar_type": {
+            "type": "string",
+            "description": "Effective interval in compact form, for example 1m."
+          },
+          "series": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OHLCV"
+            }
+          }
+        }
+      },
+      "QuoteData": {
+        "type": "object",
+        "description": "Latest quote information for a symbol",
+        "required": ["code"],
+        "properties": {
+          "code": {
+            "$ref": "#/components/schemas/SymbolCode"
+          },
+          "status": {
+            "type": "string",
+            "description": "The status of the market",
+            "example": "CLOSED",
+            "enum": ["OPEN", "CLOSED", "PRE", "POST", "HOLIDAY"]
+          },
+          "lp_time": {
+            "$ref": "#/components/schemas/UnixTimestamp",
+            "description": "Unix timestamp (seconds) of the last price update"
+          },
+          "volume": {
+            "type": "number",
+            "description": "The trading volume for the symbol",
+            "example": 120
+          },
+          "last_price": {
+            "type": "number",
+            "description": "The last traded price for the symbol",
+            "example": 150
+          },
+          "change_percent": {
+            "type": "number",
+            "description": "The percentage change in price",
+            "example": 1.5
+          },
+          "change": {
+            "type": "number",
+            "description": "The absolute change in price",
+            "example": 2
+          },
+          "ask": {
+            "type": "number",
+            "description": "The current lowest ask price for the symbol",
+            "example": 151
+          },
+          "bid": {
+            "type": "number",
+            "description": "The current highest bid price for the symbol",
+            "example": 149
+          },
+          "ask_size": {
+            "type": "number",
+            "description": "The size of the current ask order",
+            "example": 10
+          },
+          "bid_size": {
+            "type": "number",
+            "description": "The size of the current bid order",
+            "example": 5
+          },
+          "market_cap": {
+            "type": "number",
+            "description": "The market capitalization of the symbol",
+            "example": 2500000000
+          },
+          "delay_seconds": {
+            "type": "integer",
+            "description": "The delay in seconds for the market data",
+            "example": 900
+          },
+          "prev_close_price": {
+            "type": "number",
+            "description": "The previous trading day's closing price for the symbol",
+            "example": 148
+          },
+          "open_price": {
+            "type": "number",
+            "description": "The opening price for the symbol",
+            "example": 149
+          },
+          "low_price": {
+            "type": "number",
+            "description": "The lowest price for the symbol during the trading session",
+            "example": 147.5
+          },
+          "high_price": {
+            "type": "number",
+            "description": "The highest price for the symbol during the trading session",
+            "example": 152
+          },
+          "currency_code": {
+            "type": "string",
+            "description": "The currency code for the symbol",
+            "example": "USD"
+          },
+          "unit": {
+            "type": "string",
+            "description": "Unit identifier"
+          }
+        }
+      },
+      "QuoteError": {
+        "type": "object",
+        "description": "A per-code quote error.",
+        "required": ["code", "message"],
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "error": {
+            "type": "string",
+            "enum": [
+              "unsupported_for_endpoint",
+              "invalid_format",
+              "invalid_symbol"
+            ]
+          }
+        }
+      },
+      "OptionData": {
+        "type": "object",
+        "description": "Option contract data",
+        "required": [
+          "ask_price",
+          "bid_price",
+          "delta",
+          "gamma",
+          "implied_volatility",
+          "type",
+          "rho",
+          "strike_price",
+          "theoretical_price",
+          "theta",
+          "vega",
+          "bid_iv",
+          "ask_iv",
+          "expiration"
+        ],
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "last_price": {
+            "type": "number",
+            "description": "Last traded option price, when available with range."
+          },
+          "volume": {
+            "type": "number",
+            "description": "Option trading volume, when available with range."
+          },
+          "open_interest": {
+            "type": "number",
+            "description": "Outstanding option contracts, when available with range."
+          },
+          "open_interest_time": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Open interest observation time as a Unix timestamp in seconds."
+          },
+          "change": {
+            "type": "number",
+            "description": "Option price change, when available with range."
+          },
+          "change_percent": {
+            "type": "number",
+            "description": "Option price change percentage, when available with range."
+          },
+          "ask_price": {
+            "type": "number"
+          },
+          "bid_price": {
+            "type": "number"
+          },
+          "delta": {
+            "type": "number"
+          },
+          "gamma": {
+            "type": "number"
+          },
+          "implied_volatility": {
+            "type": "number"
+          },
+          "type": {
+            "type": "string"
+          },
+          "rho": {
+            "type": "number"
+          },
+          "strike_price": {
+            "type": "integer"
+          },
+          "theoretical_price": {
+            "type": "number"
+          },
+          "theta": {
+            "type": "number"
+          },
+          "vega": {
+            "type": "number"
+          },
+          "bid_iv": {
+            "type": "number"
+          },
+          "ask_iv": {
+            "type": "number"
+          },
+          "expiration": {
+            "type": "integer",
+            "description": "Expiration date in YYYYMMDD format",
+            "example": 20260618
+          }
+        }
+      },
+      "PaginatedResponse": {
+        "type": "object",
+        "description": "Standard paginated response format",
+        "required": ["hasNext", "current_page", "total_page", "current_items"],
+        "properties": {
+          "hasNext": {
+            "type": "boolean"
+          },
+          "current_page": {
+            "type": "integer"
+          },
+          "total_page": {
+            "type": "integer"
+          },
+          "current_items": {
+            "type": "integer"
+          }
+        }
+      },
+      "ScreenerRequest": {
+        "type": "object",
+        "description": "Base screener request format. Additional properties are filters only when their base name is a scalar field listed in available_fields by the matching Get Screener endpoint. A direct numeric or string field name accepts a same-type scalar equality value or a non-empty same-type array for membership. Numeric fields also accept inclusive _min and _max bounds; _range accepts exactly two numeric bounds. Collection-valued fields are selectable response fields but are not filters. Invalid filter fields or values are rejected unless ignore_invalid is true.",
+        "properties": {
+          "fields": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[a-zA-Z0-9_]+$",
+              "example": "close"
+            },
+            "description": "Array of field names to include in the response. You can find available fields in the Get Screener endpoint. At least one field must be specified, up to 10 fields maximum."
+          },
+          "exchanges": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "example": "NYSE"
+            },
+            "description": "Array of exchange names to filter by (e.g., [\"NYSE\", \"NASDAQ\"]). If not specified or empty, no exchange filtering will be applied."
+          },
+          "ignore_invalid": {
+            "type": "boolean",
+            "default": false,
+            "description": "If true, invalid values from request body will be ignored instead of returning an error."
+          },
+          "countries": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "example": "US"
+            },
+            "description": "Array of country codes to filter by (e.g., [\"US\", \"CA\"]). If not specified or empty, no country filtering will be applied."
+          },
+          "page": {
+            "type": "integer",
+            "default": 1,
+            "minimum": 1,
+            "description": "Page number for pagination"
+          },
+          "max_range": {
+            "type": "integer",
+            "nullable": true,
+            "minimum": 1,
+            "maximum": 15000,
+            "default": 1000,
+            "description": "Number of screener results returned per page. The minimum value of 1 is preserved; values from 2 are rounded up to the next multiple of 500. Default is 1000. Supported values: 1 - 15000."
+          },
+          "sortBy": {
+            "type": "string",
+            "default": "name",
+            "description": "Field name to sort by. It should be one of supported fields. If not specified, it will sort by the symbol name."
+          },
+          "sortOrder": {
+            "type": "string",
+            "default": "asc",
+            "enum": ["asc", "desc"],
+            "description": "Sort order: ascending or descending"
+          }
+        },
+        "additionalProperties": true,
+        "required": ["fields"]
+      },
+      "QuotesResponseData": {
+        "type": "object",
+        "description": "Quotes response data schema",
+        "additionalProperties": false,
+        "required": ["total_items", "data"],
+        "properties": {
+          "last_update": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/UnixTimestampMs"
+              }
+            ],
+            "nullable": true
+          },
+          "total_items": {
+            "type": "integer"
+          },
+          "data": {
+            "type": "array",
+            "items": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/QuoteData"
+                },
+                {
+                  "$ref": "#/components/schemas/QuoteError"
+                }
+              ]
+            }
+          }
+        }
+      },
+      "OptionContract": {
+        "type": "object",
+        "description": "Option contract metadata",
+        "required": [
+          "code",
+          "description",
+          "expiration",
+          "type",
+          "status",
+          "style",
+          "strike_price",
+          "multiplier",
+          "size"
+        ],
+        "properties": {
+          "code": {
+            "$ref": "#/components/schemas/SymbolCode"
+          },
+          "description": {
+            "type": "string"
+          },
+          "expiration": {
+            "type": "string",
+            "description": "Expiration date in YYYY-MM-DD format",
+            "example": "2026-04-17"
+          },
+          "type": {
+            "type": "string",
+            "enum": ["CALL", "PUT"]
+          },
+          "status": {
+            "type": "string"
+          },
+          "style": {
+            "type": "string"
+          },
+          "strike_price": {
+            "type": "string"
+          },
+          "multiplier": {
+            "type": "string"
+          },
+          "size": {
+            "type": "string"
+          },
+          "open_interest": {
+            "type": "string",
+            "nullable": true
+          },
+          "open_interest_date": {
+            "type": "string",
+            "nullable": true
+          },
+          "close_price": {
+            "type": "string",
+            "nullable": true
+          },
+          "close_price_date": {
+            "type": "string",
+            "nullable": true
+          }
+        }
+      },
+      "OptionContractsResponseData": {
+        "type": "object",
+        "description": "Option contracts response data schema",
+        "required": ["underlying_code", "last_update", "data"],
+        "properties": {
+          "error": {
+          "type": "string",
+          "description": "Error code when data is unavailable.",
+          "example": "no_data"
+        },
+        "message": {
+          "type": "string",
+          "description": "Description of unavailable data.",
+          "example": "No data is available for the given parameters"
+        },
+        "underlying_code": {
+            "$ref": "#/components/schemas/SymbolCode"
+          },
+          "last_update": {
+            "$ref": "#/components/schemas/UnixTimestampMs"
+          },
+          "last_price": {
+            "type": "number",
+            "description": "Last price of the underlying asset. Only present when the range parameter is provided and an exact strike is not provided."
+          },
+          "next_token": {
+            "type": "string",
+            "description": "Pagination token for the next page. Only present when another page is available."
+          },
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OptionContract"
+            }
+          }
+        }
+      },
+      "OptionSnapshotBar": {
+        "type": "object",
+        "description": "Option OHLCV bar. Fields are omitted when the returned snapshot does not include that value.",
+        "properties": {
+          "time": {
+            "$ref": "#/components/schemas/UnixTimestampMs"
+          },
+          "open": {
+            "type": "number"
+          },
+          "high": {
+            "type": "number"
+          },
+          "low": {
+            "type": "number"
+          },
+          "close": {
+            "type": "number"
+          },
+          "volume": {
+            "type": "number"
+          },
+          "trade_count": {
+            "type": "number"
+          },
+          "vwap": {
+            "type": "number"
+          }
+        }
+      },
+      "OptionSnapshotQuote": {
+        "type": "object",
+        "description": "Latest option quote. Fields are omitted when the returned snapshot does not include that value.",
+        "properties": {
+          "time": {
+            "$ref": "#/components/schemas/UnixTimestampMs"
+          },
+          "ask": {
+            "type": "number"
+          },
+          "ask_size": {
+            "type": "number"
+          },
+          "bid": {
+            "type": "number"
+          },
+          "bid_size": {
+            "type": "number"
+          }
+        }
+      },
+      "OptionSnapshotTrade": {
+        "type": "object",
+        "description": "Latest option trade. Fields are omitted when the returned snapshot does not include that value.",
+        "properties": {
+          "time": {
+            "$ref": "#/components/schemas/UnixTimestampMs"
+          },
+          "last_price": {
+            "type": "number"
+          },
+          "size": {
+            "type": "number"
+          }
+        }
+      },
+      "OptionSnapshotGreeks": {
+        "type": "object",
+        "description": "Option Greeks. Fields are omitted when the returned snapshot does not include that value.",
+        "properties": {
+          "delta": {
+            "type": "number"
+          },
+          "gamma": {
+            "type": "number"
+          },
+          "rho": {
+            "type": "number"
+          },
+          "theta": {
+            "type": "number"
+          },
+          "vega": {
+            "type": "number"
+          }
+        }
+      },
+      "OptionSnapshot": {
+        "type": "object",
+        "description": "Option market snapshot",
+        "required": ["code"],
+        "properties": {
+          "code": {
+            "$ref": "#/components/schemas/SymbolCode"
+          },
+          "prev": {
+            "$ref": "#/components/schemas/OptionSnapshotBar",
+            "description": "Previous daily bar"
+          },
+          "daily": {
+            "$ref": "#/components/schemas/OptionSnapshotBar",
+            "description": "Current daily bar"
+          },
+          "latest_quote": {
+            "$ref": "#/components/schemas/OptionSnapshotQuote"
+          },
+          "latest_trade": {
+            "$ref": "#/components/schemas/OptionSnapshotTrade"
+          },
+          "greeks": {
+            "$ref": "#/components/schemas/OptionSnapshotGreeks"
+          },
+          "implied_volatility": {
+            "type": "number",
+            "description": "Option implied volatility"
+          }
+        }
+      },
+      "OptionSnapshotsResponseData": {
+        "type": "object",
+        "description": "Option snapshots response data schema",
+        "required": ["underlying_code", "data"],
+        "properties": {
+          "error": {
+          "type": "string",
+          "description": "Error code when data is unavailable.",
+          "example": "no_data"
+        },
+        "message": {
+          "type": "string",
+          "description": "Description of unavailable data.",
+          "example": "No data is available for the given parameters"
+        },
+        "underlying_code": {
+            "$ref": "#/components/schemas/SymbolCode"
+          },
+          "last_price": {
+            "type": "number",
+            "description": "Last price of the underlying asset. Only present when the range parameter is provided and an exact strike is not provided."
+          },
+          "next_token": {
+            "type": "string",
+            "description": "Pagination token for the next page. Only present when another page is available."
+          },
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OptionSnapshot"
+            }
+          }
+        }
+      },
+      "OptionDataResponseData": {
+        "type": "object",
+        "description": "Option data response schema",
+        "required": ["underlying_code", "last_update", "data"],
+        "properties": {
+          "underlying_code": {
+            "$ref": "#/components/schemas/SymbolCode"
+          },
+          "last_update": {
+            "$ref": "#/components/schemas/UnixTimestampMs"
+          },
+          "last_price": {
+            "type": "number",
+            "description": "Underlying asset price, when available with range (including its default) and without strike."
+          },
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OptionData"
+            }
+          },
+          "error": {
+            "type": "string",
+            "description": "Error code when data is unavailable.",
+            "example": "no_data"
+          },
+          "message": {
+            "type": "string",
+            "description": "Description of unavailable data.",
+            "example": "No data is available for the given parameters"
+          }
+        }
+      },
+      "ScreenerParametersResponseData": {
+        "type": "object",
+        "description": "Screener parameters response data schema",
+        "required": ["available_fields", "available_exchanges", "sortOrder"],
+        "properties": {
+          "available_fields": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "available_exchanges": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "available_countries": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "sortOrder": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "ScreenerDataResponseData": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/PaginatedResponse"
+          },
+          {
+            "type": "object",
+            "required": ["data"],
+            "properties": {
+              "data": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "required": ["symbol_code"],
+                  "description": "Contains base fields (always present) plus your requested fields",
+                  "properties": {
+                    "symbol_code": {
+                      "type": "string",
+                      "description": "Symbol code in EXCHANGE:SYMBOL format (e.g., NASDAQ:AAPL)"
+                    },
+                    "name": {
+                      "type": "string",
+                      "description": "Company or asset name"
+                    },
+                    "country": {
+                      "type": "string",
+                      "description": "Country name"
+                    },
+                    "currency": {
+                      "type": "string",
+                      "description": "Trading currency code"
+                    },
+                    "delay_seconds": {
+                      "type": "integer",
+                      "description": "Data delay in seconds (0 = no reported delay)"
+                    }
+                  }
+                }
+              },
+              "error": {
+                "type": "string",
+                "description": "Error code when data is unavailable.",
+                "example": "no_data"
+              },
+              "message": {
+                "type": "string",
+                "description": "Description of unavailable data.",
+                "example": "No data is available for the given parameters"
+              }
+            }
+          }
+        ]
+      },
+      "IpoResponseData": {
+        "type": "object",
+        "description": "IPO calendar response data schema",
+        "required": ["total_count", "range", "last_update", "data"],
+        "properties": {
+          "error": {
+            "type": "string",
+            "enum": ["no_data"],
+            "description": "No-data status, returned with HTTP 200."
+          },
+          "message": {
+            "type": "string",
+            "description": "Description of the no-data result."
+          },
+          "total_count": {
+            "type": "integer"
+          },
+          "range": {
+            "type": "string"
+          },
+          "last_update": {
+            "type": "integer"
+          },
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/IpoData"
+            }
+          }
+        }
+      },
+      "IpoData": {
+        "type": "object",
+        "description": "Individual IPO record",
+        "required": [
+          "code",
+          "currency",
+          "name",
+          "exchange",
+          "country",
+          "status",
+          "offer_time",
+          "offer_price",
+          "offered_shares",
+          "deal_amount",
+          "market_cap",
+          "price_range"
+        ],
+        "properties": {
+          "code": {
+            "$ref": "#/components/schemas/SymbolCode"
+          },
+          "currency": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "offer_time": {
+            "type": "integer"
+          },
+          "offer_price": {
+            "type": "number"
+          },
+          "offered_shares": {
+            "type": "number"
+          },
+          "deal_amount": {
+            "type": "number"
+          },
+          "price_range": {
+            "type": "string"
+          },
+          "country": {
+            "type": "string"
+          },
+          "market_cap": {
+            "type": "number"
+          }
+        }
+      },
+      "DividendResponseData": {
+        "type": "object",
+        "description": "Dividend calendar response data schema",
+        "required": ["total_count", "range", "last_update", "data"],
+        "properties": {
+          "error": {
+            "type": "string",
+            "enum": ["no_data"],
+            "description": "No-data status, returned with HTTP 200."
+          },
+          "message": {
+            "type": "string",
+            "description": "Description of the no-data result."
+          },
+          "total_count": {
+            "type": "integer"
+          },
+          "range": {
+            "type": "string"
+          },
+          "last_update": {
+            "type": "integer"
+          },
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DividendData"
+            }
+          }
+        }
+      },
+      "DividendData": {
+        "type": "object",
+        "description": "Individual dividend record",
+        "required": [
+          "code",
+          "dividend_ex_date_recent",
+          "dividend_ex_date_upcoming",
+          "name",
+          "dividends_yield",
+          "dividend_payment_date_recent",
+          "dividend_payment_date_upcoming",
+          "dividend_amount_recent",
+          "dividend_amount_upcoming",
+          "currency_code",
+          "country",
+          "market_cap"
+        ],
+        "properties": {
+          "code": {
+            "$ref": "#/components/schemas/SymbolCode"
+          },
+          "dividend_ex_date_recent": {
+            "type": "integer"
+          },
+          "dividend_ex_date_upcoming": {
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          },
+          "dividends_yield": {
+            "type": "number"
+          },
+          "dividend_payment_date_recent": {
+            "type": "integer"
+          },
+          "dividend_payment_date_upcoming": {
+            "type": "integer"
+          },
+          "dividend_amount_recent": {
+            "type": "number"
+          },
+          "dividend_amount_upcoming": {
+            "type": "number"
+          },
+          "currency_code": {
+            "type": "string"
+          },
+          "country": {
+            "type": "string"
+          },
+          "market_cap": {
+            "type": "number"
+          }
+        }
+      },
+      "EarningsResponseData": {
+        "type": "object",
+        "description": "Earnings calendar response data schema",
+        "required": ["total_count", "range", "last_update", "data"],
+        "properties": {
+          "error": {
+            "type": "string",
+            "enum": ["no_data"],
+            "description": "No-data status, returned with HTTP 200."
+          },
+          "message": {
+            "type": "string",
+            "description": "Description of the no-data result."
+          },
+          "total_count": {
+            "type": "integer"
+          },
+          "range": {
+            "type": "string"
+          },
+          "last_update": {
+            "type": "integer"
+          },
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EarningsData"
+            }
+          }
+        }
+      },
+      "EarningsData": {
+        "type": "object",
+        "description": "Individual earnings record",
+        "required": [
+          "code",
+          "earnings_release_next_date",
+          "earnings_release_date",
+          "name",
+          "earnings_per_share_fq",
+          "earnings_per_share_forecast_next_fq",
+          "eps_surprise_fq",
+          "eps_surprise_percent_fq",
+          "revenue_fq",
+          "revenue_forecast_next_fq",
+          "market_cap",
+          "earnings_per_share_forecast_fq",
+          "revenue_forecast_fq",
+          "currency_code",
+          "country",
+          "revenue_surprise_fq",
+          "revenue_surprise_percent_fq"
+        ],
+        "properties": {
+          "code": {
+            "$ref": "#/components/schemas/SymbolCode"
+          },
+          "earnings_release_next_date": {
+            "type": "integer"
+          },
+          "earnings_release_date": {
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          },
+          "earnings_per_share_fq": {
+            "type": "number"
+          },
+          "earnings_per_share_forecast_next_fq": {
+            "type": "number"
+          },
+          "eps_surprise_fq": {
+            "type": "number"
+          },
+          "eps_surprise_percent_fq": {
+            "type": "number"
+          },
+          "revenue_fq": {
+            "type": "integer"
+          },
+          "revenue_forecast_next_fq": {
+            "type": "integer"
+          },
+          "market_cap": {
+            "type": "integer"
+          },
+          "earnings_per_share_forecast_fq": {
+            "type": "number"
+          },
+          "revenue_forecast_fq": {
+            "type": "integer"
+          },
+          "currency_code": {
+            "type": "string"
+          },
+          "country": {
+            "type": "string"
+          },
+          "revenue_surprise_fq": {
+            "type": "integer"
+          },
+          "revenue_surprise_percent_fq": {
+            "type": "number"
+          }
+        }
+      },
+      "EconomicEventsResponseData": {
+        "type": "object",
+        "description": "Economic events calendar response data schema",
+        "required": ["total_count", "range", "last_update", "data"],
+        "properties": {
+          "error": {
+            "type": "string",
+            "enum": ["no_data"],
+            "description": "No-data status, returned with HTTP 200."
+          },
+          "message": {
+            "type": "string",
+            "description": "Description of the no-data result."
+          },
+          "total_count": {
+            "type": "integer"
+          },
+          "range": {
+            "type": "string"
+          },
+          "last_update": {
+            "type": "integer"
+          },
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EconomicEventData"
+            }
+          }
+        }
+      },
+      "EconomicEventData": {
+        "type": "object",
+        "description": "Individual economic event record",
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "country": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "source_url": {
+            "type": "string"
+          },
+          "currency": {
+            "type": "string"
+          },
+          "importance": {
+            "type": "string"
+          },
+          "date": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "NewsfeedResponseData": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/PaginatedResponse"
+          },
+          {
+            "type": "object",
+            "required": [
+              "last_update",
+              "total_items",
+              "current_items",
+              "page",
+              "has_next",
+              "data"
+            ],
+            "properties": {
+              "last_update": {
+                "type": "integer"
+              },
+              "total_items": {
+                "type": "integer"
+              },
+              "current_items": {
+                "type": "integer"
+              },
+              "page": {
+                "type": "integer"
+              },
+              "has_next": {
+                "type": "boolean"
+              },
+              "data": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/NewsItem"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "NewsItem": {
+        "type": "object",
+        "description": "Individual news item",
+        "required": ["published_at"],
+        "properties": {
+          "link": {
+            "type": "string",
+            "format": "uri"
+          },
+          "title": {
+            "type": "string"
+          },
+          "source": {
+            "type": "string"
+          },
+          "content": {
+            "type": "string"
+          },
+          "published_at": {
+            "type": "integer"
+          },
+          "related_symbols": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "NewsfeedSourceListResponseData": {
+        "type": "object",
+        "description": "Available news feed source names",
+        "required": ["last_update", "data"],
+        "properties": {
+          "last_update": {
+            "type": "integer",
+            "description": "Unix timestamp in seconds when this source list was last updated."
+          },
+          "data": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "example": ["Reuters", "MarketWatch", "Dow Jones Newswires"]
+          }
+        }
+      },
+      "DocumentItem": {
+        "type": "object",
+        "description": "Document metadata item",
+        "required": [
+          "id",
+          "category",
+          "reported_time",
+          "is_available",
+          "title",
+          "is_pdf"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Unique document identifier in format type:uniqueidentifier",
+            "example": "transcripts:2133670"
+          },
+          "category": {
+            "type": "string",
+            "description": "Document category",
+            "example": "Transcript"
+          },
+          "reported_time": {
+            "type": "integer",
+            "description": "Unix timestamp (seconds) when document was reported",
+            "example": 1757437200
+          },
+          "is_available": {
+            "type": "boolean",
+            "description": "Whether the document is available for retrieval"
+          },
+          "title": {
+            "type": "string",
+            "description": "Document title",
+            "example": "Product Launch"
+          },
+          "is_pdf": {
+            "type": "boolean",
+            "description": "Whether the document is in PDF format"
+          },
+          "fiscal_period": {
+            "type": "string",
+            "description": "Fiscal period (for quarterly/annual reports)",
+            "example": "Q3"
+          },
+          "fiscal_year": {
+            "type": "integer",
+            "description": "Fiscal year (for quarterly/annual reports)",
+            "example": 2025
+          },
+          "form": {
+            "type": "string",
+            "description": "Form type (for regulatory filings)",
+            "example": "10-Q"
+          }
+        }
+      },
+      "DocumentContent": {
+        "type": "object",
+        "description": "Document content (for non-PDF documents)",
+        "required": ["title", "published_at", "content"],
+        "properties": {
+          "title": {
+            "type": "string",
+            "description": "Document title",
+            "example": "Product Launch"
+          },
+          "published_at": {
+            "type": "integer",
+            "description": "Unix timestamp (seconds) when document was published",
+            "example": 1757437200
+          },
+          "content": {
+            "type": "string",
+            "description": "Document content text",
+            "example": "Tim Cook ... and so on"
+          }
+        }
+      },
+      "Fundamental": {
+        "type": "object",
+        "description": "Fundamental data point with metadata and value",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Unique identifier for the fundamental metric",
+            "example": "net_income_fy"
+          },
+          "name": {
+            "type": "string",
+            "description": "Display name of the fundamental metric",
+            "example": "Net income"
+          },
+          "category": {
+            "type": "string",
+            "description": "Category of the fundamental metric",
+            "example": "Income statements"
+          },
+          "group": {
+            "type": "string",
+            "description": "Subcategory or grouping within the category",
+            "example": "Per share metrics"
+          },
+          "type": {
+            "type": "string",
+            "description": "Data type of the fundamental value",
+            "enum": ["number", "array", "string"],
+            "example": "number"
+          },
+          "period": {
+            "type": "string",
+            "description": "Time period for the fundamental data",
+            "example": "FY"
+          },
+          "value": {
+            "oneOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "array",
+                "items": {
+                  "oneOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "object",
+                      "additionalProperties": true
+                    }
+                  ]
+                }
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "description": "The actual fundamental value (only present in /v3/symbols/{symbol}/fundamentals endpoint)"
+          }
+        },
+        "required": ["id"]
+      },
+      "FundamentalWithoutValue": {
+        "type": "object",
+        "description": "Fundamental data point metadata without the value field",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Unique identifier for the fundamental metric",
+            "example": "net_income_fy"
+          },
+          "name": {
+            "type": "string",
+            "description": "Display name of the fundamental metric",
+            "example": "Net income"
+          },
+          "category": {
+            "type": "string",
+            "description": "Category of the fundamental metric",
+            "example": "Income statements"
+          },
+          "group": {
+            "type": "string",
+            "description": "Subcategory or grouping within the category",
+            "example": "Per share metrics"
+          },
+          "type": {
+            "type": "string",
+            "description": "Data type of the fundamental value",
+            "enum": ["number", "array", "string"],
+            "example": "number"
+          },
+          "period": {
+            "type": "string",
+            "description": "Time period for the fundamental data",
+            "example": "FY"
+          }
+        },
+        "required": ["id"]
+      },
+      "FundamentalsResponse": {
+        "type": "object",
+        "description": "Response containing fundamental data with values",
+        "additionalProperties": false,
+        "required": ["code", "data", "last_update"],
+        "properties": {
+          "code": {
+            "type": "string",
+            "description": "Symbol code",
+            "example": "NASDAQ:AAPL"
+          },
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Fundamental"
+            },
+            "description": "Array of fundamental data with values"
+          },
+          "last_update": {
+            "$ref": "#/components/schemas/UnixTimestampMs",
+            "description": "The last update time in Unix timestamp (milliseconds)"
+          }
+        }
+      },
+      "FundamentalsMetaResponse": {
+        "type": "object",
+        "description": "Response containing fundamental data's base structure without values and available individual indicators",
+        "required": [
+          "last_update",
+          "base",
+          "fundamental_series",
+          "technical_series"
+        ],
+        "properties": {
+          "base": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FundamentalWithoutValue"
+            },
+            "description": "Array of fundamental metadata without values"
+          },
+          "fundamental_series": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "description": "Unique identifier for the indicator",
+                  "example": "unusual_expense_inc_fh"
+                },
+                "name": {
+                  "type": "string",
+                  "description": "Display name of the indicator",
+                  "example": "Unusual income/expense"
+                }
+              },
+              "description": "List of available individual fundamental indicators. Use each id with /v3/symbols/{symbol}/fundamentals/series?ids={id}."
+            }
+          },
+          "technical_series": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "description": "Unique identifier for the technical indicator",
+                  "example": "unusual_expense_inc_fh"
+                },
+                "name": {
+                  "type": "string",
+                  "description": "Display name of the technical indicator",
+                  "example": "Unusual income/expense"
+                }
+              },
+              "description": "List of available individual technical indicators. Use each id with /v3/symbols/{symbol}/fundamentals/series?ids={id}."
+            }
+          },
+          "last_update": {
+            "$ref": "#/components/schemas/UnixTimestampMs",
+            "description": "The last update time in Unix timestamp (milliseconds)"
+          }
+        }
+      },
+      "FundamentalsSeriesResponse": {
+        "type": "object",
+        "description": "Response containing fundamental time series data",
+        "additionalProperties": false,
+        "properties": {
+          "last_update": {
+            "$ref": "#/components/schemas/UnixTimestampMs",
+            "description": "The last update time in Unix timestamp (milliseconds)"
+          },
+          "total_items": {
+            "type": "integer",
+            "description": "Total number of fundamental indicators in response",
+            "example": 2
+          },
+          "code": {
+            "$ref": "#/components/schemas/SymbolCode",
+            "description": "Symbol code"
+          },
+          "data": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "description": "Fundamental indicator ID",
+                  "example": "diluted_shares_outstanding_fy"
+                },
+                "name": {
+                  "type": "string",
+                  "description": "Display name of the fundamental indicator",
+                  "example": "FY Diluted shares outstanding"
+                },
+                "data": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "description": "Time series point. The numeric value keys depend on the indicator type:\n- Scalar fundamentals (e.g. `price_earnings`, `diluted_shares_outstanding_fy`): a single `close` field.\n- Multi-line technical studies (e.g. `rsi`, `macd`): the study ID is itself a key (e.g. `rsi`), alongside one or more companion plot lines (e.g. `plot`, `rsi-based_ma`).\nIn all cases `time` is present and every non-time value is numeric.",
+                    "properties": {
+                      "time": {
+                        "$ref": "#/components/schemas/UnixTimestamp",
+                        "description": "Unix timestamp (seconds) for the data point"
+                      },
+                      "close": {
+                        "type": "number",
+                        "description": "Present for scalar fundamental indicators. Omitted for multi-line technical studies, which expose their values under the study ID key instead.",
+                        "example": 23992607992.584
+                      }
+                    },
+                    "required": ["time"],
+                    "additionalProperties": {
+                      "type": "number",
+                      "description": "Numeric value for a study output line. Key name matches the study ID (e.g. `rsi`) or a companion plot line (e.g. `plot`, `rsi-based_ma`)."
+                    },
+                    "examples": [
+                      {
+                        "time": 1776432600,
+                        "close": 34.18988334725069
+                      },
+                      {
+                        "time": 1776432600,
+                        "rsi": 64.1632884270474,
+                        "plot": 50,
+                        "rsi-based_ma": 52.86550739966035
+                      }
+                    ]
+                  },
+                  "description": "Historical time series data points for the fundamental indicator"
+                }
+              },
+              "required": ["id", "name", "data"]
+            },
+            "description": "Array of fundamental indicators with their historical data"
+          }
+        },
+        "required": ["last_update", "total_items", "code", "data"]
+      },
+      "SipCompactTimeSeriesResponseData": {
+        "type": "object",
+        "description": "Compact time series returned with abbr=true. Row values follow series_keys; missing values are null.",
+        "additionalProperties": false,
+        "required": ["code", "bar_type", "series_keys", "series"],
+        "properties": {
+          "code": {
+            "$ref": "#/components/schemas/SipSymbolCode"
+          },
+          "last_update": {
+            "$ref": "#/components/schemas/UnixTimestampMs"
+          },
+          "bar_type": {
+            "type": "string",
+            "description": "Effective interval, for example 1T, 1s, or 1m."
+          },
+          "bar_end": {
+            "$ref": "#/components/schemas/UnixTimestamp"
+          },
+          "error": {
+            "type": "string",
+            "description": "Error code when data is unavailable."
+          },
+          "message": {
+            "type": "string",
+            "description": "Message when data is unavailable."
+          },
+          "available_start_date": {
+            "type": "string",
+            "format": "date",
+            "description": "Earliest available date (America/New_York), when known."
+          },
+          "series_keys": {
+            "type": "array",
+            "description": "Field names in row order.",
+            "items": {
+              "type": "string",
+              "enum": [
+                "time",
+                "us",
+                "type",
+                "open",
+                "high",
+                "low",
+                "close",
+                "volume",
+                "trade_id",
+                "trade_exchange",
+                "tape",
+                "trade_conditions"
+              ]
+            }
+          },
+          "series": {
+            "type": "array",
+            "items": {
+              "type": "array",
+              "items": {
+                "anyOf": [
+                  {
+                    "type": "number",
+                    "nullable": true
+                  },
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        }
+      },
+      "RequestError": {
+        "type": "object",
+        "required": ["error", "message"],
+        "properties": {
+          "error": {
+            "type": "string",
+            "example": "invalid_symbol"
+          },
+          "message": {
+            "type": "string",
+            "example": "Invalid Symbol Code"
+          }
+        }
+      },
+      "UnavailableDocument": {
+        "type": "object",
+        "required": [
+          "data",
+          "error",
+          "message"
+        ],
+        "properties": {
+          "data": {
+            "type": "object",
+            "nullable": true,
+            "enum": [
+              null
+            ]
+          },
+          "error": {
+            "type": "string",
+            "enum": ["no_data"]
+          },
+          "message": {
+            "type": "string",
+            "example": "Document content is unavailable"
+          }
+        }
+      }
+    },
+    "parameters": {
+      "CorporateActionMonthQueryParam": {
+        "name": "month",
+        "in": "query",
+        "required": true,
+        "description": "Processing month in YYYY-MM format, from 2016-01 onward.",
+        "example": "2026-07",
+        "schema": {"type": "string", "pattern": "^(201[6-9]|20[2-9][0-9]|2[1-9][0-9]{2}|[3-9][0-9]{3})-(0[1-9]|1[0-2])$"}
+      },
+      "CorporateActionCodeQueryParam": {
+        "name": "code",
+        "in": "query",
+        "required": false,
+        "description": "SIP-prefixed symbol code.",
+        "example": "SIP:AAPL",
+        "schema": {"type": "string", "pattern": "^SIP:[A-Z0-9/._-]+$"}
+      },
+      "SipSymbolPathParam": {
+        "name": "code",
+        "in": "path",
+        "required": true,
+        "description": "SIP-prefixed symbol code.",
+        "example": "SIP:AAPL",
+        "schema": {
+          "$ref": "#/components/schemas/SipSymbolCode"
+        }
+      },
+      "SymbolPathParam": {
+        "name": "symbol",
+        "in": "path",
+        "required": true,
+        "description": "Symbol in Exchange:Symbol format (e.g., NASDAQ:AAPL, NYSE:TSLA). You can search for this symbol code using the /v3/symbols/search endpoint.",
+        "example": "NASDAQ:AAPL",
+        "schema": {
+          "$ref": "#/components/schemas/SymbolCode"
+        }
+      },
+      "SymbolCodeQueryParam": {
+        "name": "code",
+        "in": "query",
+        "required": true,
+        "description": "(Required) Symbol code in Exchange:Symbol format (e.g., NASDAQ:AAPL). Use search_symbols to find the correct code.",
+        "example": "NASDAQ:AAPL",
+        "schema": {
+          "$ref": "#/components/schemas/SymbolCode"
+        }
+      },
+      "BarTypeParam": {
+        "name": "bar_type",
+        "in": "query",
+        "required": false,
+        "description": "(Optional) Bar type. Default is 'day'",
+        "example": "day",
+        "schema": {
+          "type": "string",
+          "default": "day",
+          "enum": ["tick", "second", "minute", "hour", "day", "week", "month"]
+        }
+      },
+      "BarIntervalParam": {
+        "name": "bar_interval",
+        "in": "query",
+        "required": false,
+        "description": "Bar interval. Default is 1; unsupported values use 1.",
+        "example": 1,
+        "schema": {
+          "type": "integer",
+          "default": 1
+        }
+      },
+      "SipBarIntervalParam": {
+        "name": "bar_interval",
+        "in": "query",
+        "required": false,
+        "description": "Bar interval. Tick and second bars use 1.",
+        "example": 1,
+        "schema": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1440,
+          "default": 1
+        }
+      },
+      "ExtendedParam": {
+        "name": "extended",
+        "in": "query",
+        "required": false,
+        "description": "(Optional) Extended hours (Not all assets support extended hours). Default to true.",
+        "example": true,
+        "schema": {
+          "type": "boolean",
+          "default": true
+        }
+      },
+      "TwentyFourHourParam": {
+        "name": "24h",
+        "in": "query",
+        "required": false,
+        "description": "(Optional) Request 24-hour market data. Only NYSE, NASDAQ, AMEX, and CBOE are supported; other exchanges ignore this parameter. When true, takes precedence over extended. Default is false.",
+        "example": true,
+        "schema": {
+          "type": "boolean",
+          "default": false
+        }
+      },
+      "SplitAdjustmentParam": {
+        "name": "split",
+        "in": "query",
+        "required": false,
+        "description": "(Optional) Split adjustment for equities and ETFs. Default to true. When false, returns unadjusted data and overrides dadj.",
+        "schema": {
+          "type": "boolean",
+          "default": true
+        }
+      },
+      "DividendAdjustmentParam": {
+        "name": "dadj",
+        "in": "query",
+        "required": false,
+        "description": "(Optional) Dividend adjustment for equities and etfs (has no effect on assets without dividends). Only applies when split=true. Default to false.",
+        "schema": {
+          "type": "boolean",
+          "default": false
+        }
+      },
+      "BackAdjustmentParam": {
+        "name": "badj",
+        "in": "query",
+        "required": false,
+        "description": "(Optional) Back-adjustment for continous futures contracts (has no effect on non-continous futures data). Default to true.",
+        "schema": {
+          "type": "boolean",
+          "default": true
+        }
+      },
+      "CurrencyParam": {
+        "name": "currency",
+        "in": "query",
+        "required": false,
+        "description": "(Optional) Convert the OHLCV data to a different currency. The currency code must be a valid ISO 4217 currency code (e.g., USD, EUR, GBP). Do not include this field if you want to use the default currency for the symbol",
+        "schema": {
+          "type": "string",
+          "enum": [
+            "AED",
+            "AFN",
+            "ALL",
+            "AMD",
+            "AOA",
+            "ARS",
+            "AUD",
+            "AWG",
+            "AZN",
+            "BAM",
+            "BBD",
+            "BDT",
+            "BGN",
+            "BHD",
+            "BIF",
+            "BMD",
+            "BND",
+            "BOB",
+            "BRL",
+            "BSD",
+            "BTN",
+            "BWP",
+            "BYN",
+            "BZD",
+            "CAD",
+            "CDF",
+            "CHF",
+            "CLF",
+            "CLP",
+            "CNY",
+            "COP",
+            "CRC",
+            "CUP",
+            "CVE",
+            "CZK",
+            "DJF",
+            "DKK",
+            "DOP",
+            "DZD",
+            "EGP",
+            "ERN",
+            "ETB",
+            "EUR",
+            "FJD",
+            "GBP",
+            "GEL",
+            "GHS",
+            "GIP",
+            "GMD",
+            "GNF",
+            "GTQ",
+            "GYD",
+            "HKD",
+            "HNL",
+            "HTG",
+            "HUF",
+            "IDR",
+            "ILS",
+            "INR",
+            "IQD",
+            "IRR",
+            "ISK",
+            "JMD",
+            "JOD",
+            "JPY",
+            "KES",
+            "KGS",
+            "KHR",
+            "KMF",
+            "KPW",
+            "KRW",
+            "KWD",
+            "KYD",
+            "KZT",
+            "LAK",
+            "LBP",
+            "LKR",
+            "LRD",
+            "LSL",
+            "LYD",
+            "MAD",
+            "MDL",
+            "MGA",
+            "MKD",
+            "MMK",
+            "MNT",
+            "MOP",
+            "MRU",
+            "MUR",
+            "MVR",
+            "MWK",
+            "MXN",
+            "MXV",
+            "MYR",
+            "MZN",
+            "NAD",
+            "NGN",
+            "NIO",
+            "NOK",
+            "NPR",
+            "NZD",
+            "OMR",
+            "PAB",
+            "PEN",
+            "PGK",
+            "PHP",
+            "PKR",
+            "PLN",
+            "PYG",
+            "QAR",
+            "RON",
+            "RSD",
+            "RUB",
+            "RWF",
+            "SAR",
+            "SBD",
+            "SCR",
+            "SDG",
+            "SEK",
+            "SGD",
+            "SLL",
+            "SOS",
+            "SRD",
+            "STN",
+            "SVC",
+            "SYP",
+            "SZL",
+            "THB",
+            "TJS",
+            "TMT",
+            "TND",
+            "TOP",
+            "TRY",
+            "TTD",
+            "TWD",
+            "TZS",
+            "UAH",
+            "UGX",
+            "USD",
+            "UYU",
+            "UZS",
+            "VES",
+            "VND",
+            "VUV",
+            "WST",
+            "XAF",
+            "XCD",
+            "XCG",
+            "XDR",
+            "XOF",
+            "XPF",
+            "ATS",
+            "BEF",
+            "CNH",
+            "DEM",
+            "ESP",
+            "FIM",
+            "FRF",
+            "GBX",
+            "GRD",
+            "IEP",
+            "ILA",
+            "ITL",
+            "KWF",
+            "LUF",
+            "NLG",
+            "PTE",
+            "SIT",
+            "USX",
+            "ZAC",
+            "YER",
+            "ZAR",
+            "ZMW"
+          ]
+        }
+      },
+      "SettlementParam": {
+        "name": "settlement",
+        "in": "query",
+        "required": false,
+        "description": "(Optional) Set Settlement as daily close. Default is false",
+        "example": true,
+        "schema": {
+          "type": "boolean",
+          "default": false,
+          "example": false
+        }
+      },
+      "WeekRangeParam": {
+        "name": "w",
+        "in": "query",
+        "required": false,
+        "description": "Specifies the week range. For example, 1 means this week (starting today) through next week, 2 means next week through the following week, and so on. When provided, this parameter takes precedence over month.",
+        "example": 1,
+        "schema": {
+          "type": "integer",
+          "default": 1,
+          "minimum": 1
+        }
+      },
+      "CalendarMonthParam": {
+        "name": "month",
+        "in": "query",
+        "required": false,
+        "description": "Fetches one historical UTC calendar month in YYYY-MM format when w is absent. Invalid months are rejected even when w is provided. The current or a future month is rejected. Oldest available months are 2012-12 for events, 2025-01 for dividends, 2012-04 for earnings, and 1995-01 for IPOs.",
+        "schema": {
+          "type": "string",
+          "pattern": "^(?!0000)[0-9]{4}-(0[1-9]|1[0-2])$"
+        }
+      },
+      "CountryCodeParam": {
+        "name": "c",
+        "in": "query",
+        "required": false,
+        "description": "(Optional) Filter by country code(s) as a comma-separated ISO 3166-1 alpha-2 string, for example `US,AR`. Invalid codes will be ignored.",
+        "example": "US,AR",
+        "schema": {
+          "type": "string",
+          "pattern": "^[A-Z]{2}(,[A-Z]{2})*$"
+        },
+        "x-ui-control": "csv-multiselect",
+        "x-ui-options": [
+          "US",
+          "AR",
+          "AU",
+          "BE",
+          "BR",
+          "CA",
+          "CN",
+          "CY",
+          "DE",
+          "DK",
+          "EE",
+          "ES",
+          "FI",
+          "FR",
+          "GR",
+          "HU",
+          "ID",
+          "IN",
+          "IT",
+          "JP",
+          "KR",
+          "LT",
+          "LV",
+          "LU",
+          "MX",
+          "NL",
+          "PL",
+          "PT",
+          "RU",
+          "RO",
+          "SA",
+          "SE",
+          "SK",
+          "TR",
+          "GB",
+          "ZA"
+        ]
+      },
+      "CalendarCodeParam": {
+        "name": "code",
+        "in": "query",
+        "required": false,
+        "description": "(Optional) Filter by symbol code in Exchange:Symbol format (e.g., NASDAQ:AAPL). Returns only calendar entries matching this symbol.",
+        "example": "NASDAQ:AAPL",
+        "schema": {
+          "$ref": "#/components/schemas/SymbolCode"
+        }
+      },
+      "CalendarLocalCurrencyParam": {
+        "name": "local",
+        "in": "query",
+        "required": false,
+        "description": "When true and `c` contains exactly one supported non-US country code, monetary values are returned in that country's local reporting currency. Otherwise, the default reporting currency is used.",
+        "example": true,
+        "schema": {
+          "type": "boolean",
+          "default": false
+        }
+      },
+      "SortByParam": {
+        "name": "sortBy",
+        "in": "query",
+        "required": false,
+        "description": "(Optional) Sort by specified field",
+        "example": "type",
+        "schema": {
+          "type": "string",
+          "default": "type",
+          "enum": [
+            "type",
+            "ask_price",
+            "bid_price",
+            "delta",
+            "gamma",
+            "expiration",
+            "implied_volatility",
+            "rho",
+            "strike_price",
+            "theoretical_price",
+            "theta",
+            "vega"
+          ]
+        }
+      },
+      "SortOrderParam": {
+        "name": "sort",
+        "in": "query",
+        "required": false,
+        "description": "(Optional) Sort order",
+        "example": "asc",
+        "schema": {
+          "type": "string",
+          "default": "asc",
+          "enum": ["asc", "desc"]
+        }
+      },
+      "DataPointsParam": {
+        "name": "dp",
+        "in": "query",
+        "required": false,
+        "description": "The minimum value of 1 is preserved; values from 2 are rounded up to the next multiple of 500 data points. Default is 3000. Supported values: 1 - 30000.",
+        "example": 3000,
+        "schema": {
+          "type": "integer",
+          "default": 3000,
+          "minimum": 1,
+          "maximum": 30000
+        }
+      },
+      "AbbrParam": {
+        "name": "abbr",
+        "in": "query",
+        "required": false,
+        "description": "Set to true to return series as arrays with a series_keys array of field names. Empty series may omit series_keys.",
+        "schema": {
+          "type": "boolean",
+          "default": false
+        },
+        "example": false
+      }
+    },
+    "responses": {
+      "SipRequestError": {
+        "description": "Invalid SIP endpoint input",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/SipErrorResponse"
+            }
+          }
+        }
+      },
+      "SipAccessError": {
+        "description": "Access denied",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/SipErrorResponse"
+            }
+          }
+        }
+      },
+      "SipServiceUnavailable": {
+        "description": "Data is temporarily unavailable",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/SipErrorResponse"
+            }
+          }
+        }
+      },
+      "HistoricalDataResponse": {
+        "description": "Successful historical data response",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/HistoricalDataResponse"
+            }
+          }
+        }
+      },
+      "ArchiveHistoryResponse": {
+        "description": "Successful archive history response",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ArchiveHistoryResponseData"
+            }
+          }
+        }
+      },
+      "QuotesResponse": {
+        "description": "Successful quotes response",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/QuotesResponseData"
+            }
+          }
+        }
+      },
+      "OptionContractsResponse": {
+        "description": "Available option contracts",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/OptionContractsResponseData"
+            }
+          }
+        }
+      },
+      "OptionSnapshotsResponse": {
+        "description": "Option market snapshots",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/OptionSnapshotsResponseData"
+            }
+          }
+        }
+      },
+      "OptionDataResponse": {
+        "description": "Option chain data",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/OptionDataResponseData"
+            }
+          }
+        }
+      },
+      "ScreenerParametersResponse": {
+        "description": "Available screener parameters",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ScreenerParametersResponseData"
+            }
+          }
+        }
+      },
+      "ScreenerDataResponse": {
+        "description": "Screener results",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ScreenerDataResponseData"
+            }
+          }
+        }
+      },
+      "DividendResponse": {
+        "description": "Dividend calendar data",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/DividendResponseData"
+            }
+          }
+        }
+      },
+      "IpoResponse": {
+        "description": "Ipo calendar data",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/IpoResponseData"
+            }
+          }
+        }
+      },
+      "EarningsResponse": {
+        "description": "Earnings calendar data",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/EarningsResponseData"
+            }
+          }
+        }
+      },
+      "EconomicEventsResponse": {
+        "description": "Economic events calendar data",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/EconomicEventsResponseData"
+            }
+          }
+        }
+      },
+      "NewsfeedResponse": {
+        "description": "Newsfeed data",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/NewsfeedResponseData"
+            }
+          }
+        }
+      },
+      "NewsfeedSourceListResponse": {
+        "description": "Newsfeed source list",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/NewsfeedSourceListResponseData"
+            }
+          }
+        }
+      },
+      "SipUnauthorized": {
+        "description": "Authentication required",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/SipErrorResponse"
+            }
+          }
+        }
+      },
+      "SipTooManyRequests": {
+        "description": "Too many requests",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/SipErrorResponse"
+            }
+          }
+        }
+      },
+      "RequestError": {
+        "description": "Invalid symbol, parameter, or request.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/RequestError"
+            }
+          }
+        }
+      }
+    },
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "Obtain Bearer token from the Dashboard. Example: 'Authorization: Bearer {token}'"
+      }
+    }
+  },
+  "security": [
+    {
+      "bearerAuth": []
+    }
+  ]
+}

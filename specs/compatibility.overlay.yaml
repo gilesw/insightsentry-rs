@@ -1,0 +1,13 @@
+overlay: 1.1.0
+info:
+  title: InsightSentry fields the live API returns beyond the published spec
+  version: 1.0.0
+actions:
+  - target: "$.paths['/v3/symbols/{symbol}/info'].get.responses['200'].content['application/json'].schema.properties"
+    update:
+      week_52_high:
+        type: number
+        description: Highest price over the last 52 weeks
+      week_52_low:
+        type: number
+        description: Lowest price over the last 52 weeks

@@ -1,0 +1,29 @@
+[generator]
+spec_path = "specs/insightsentry2026.json"
+output_dir = "src/generated"
+effective_spec = "effective.json"
+module_name = "generated"
+overlays = ["specs/compatibility.overlay.yaml"]
+
+[features]
+enable_async_client = true
+enable_sse_client = false
+
+[http_client]
+base_url = "https://api.insightsentry.com"
+# Deadlines are enforced by the convenience layer with Tokio.
+max_response_body_bytes = 8388608
+
+[http_client.tracing]
+enabled = false
+
+[http_client.auth]
+type = "Bearer"
+header_name = "Authorization"
+
+[extensible_enums]
+"QuoteDataStatus" = true
+"GetV3SymbolsSymbolInfoResponseStatus" = true
+"FundamentalType" = true
+
+"QuoteErrorError" = true

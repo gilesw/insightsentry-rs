@@ -1,0 +1,32 @@
+[package]
+name = "insightsentry"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+description = "Unofficial typed async client for the direct InsightSentry API"
+license = "MIT OR Apache-2.0"
+authors = ["Giles Westwood"]
+readme = "README.md"
+publish = ["crates-io"]
+keywords = ["finance", "stocks", "market-data", "api", "client"]
+categories = ["api-bindings", "web-programming::http-client"]
+include = ["/src/**/*.rs", "/README.md", "/RELEASING.md", "/CHANGELOG.md", "/LICENSE-MIT", "/LICENSE-APACHE"]
+
+[dependencies]
+tokio = { version = "1", features = ["time"] }
+bytes = { version = "1", features = ["serde"] }
+url = { version = "2", features = ["serde"] }
+chrono = { version = "0.4", features = ["serde"] }
+futures-util = "0.3"
+reqwest = { version = "0.13", default-features = false, features = ["query", "rustls", "stream"] }
+reqwest-middleware = { version = "0.5", features = ["query"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "2"
+
+[dev-dependencies]
+tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
+wiremock = "=0.6.4"
+
+[lints.rust]
+unsafe_code = "forbid"
